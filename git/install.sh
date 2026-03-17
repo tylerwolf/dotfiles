@@ -2,6 +2,12 @@
 
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
+# Use main as the default branch for new repos
+git config --global init.defaultBranch main
+
+# Point git at the global ignore file symlinked by bootstrap
+git config --global core.excludesfile ~/.gitignore
+
 # Don't ask ssh password all the time
 # if [ "$(uname -s)" = "Darwin" ]; then
 # 	git config --global credential.helper osxkeychain
