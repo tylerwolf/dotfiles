@@ -7,6 +7,9 @@ DOTFILES_ROOT=$(pwd -P)
 
 set -e
 
+# shellcheck source=script/os.sh
+. "$DOTFILES_ROOT/script/os.sh"
+
 echo ''
 
 info() {
@@ -64,12 +67,6 @@ setup_gitconfig() {
 	success 'gitconfig'
 }
 
-setup_homebrew() {
-	info 'setup homebrew'
-	"$DOTFILES_ROOT"/homebrew/install.sh
-	success 'homebrew'
-}
-
 link_file() {
 	if [ -e "$2" ]; then
 		if [ "$(readlink "$2")" = "$1" ]; then
@@ -84,26 +81,80 @@ link_file() {
 	success "linked $1 to $2"
 }
 
+# Symlink every *.symlink file into $HOME as a dotfile. A file tagged with a
+# platform (e.g. Brewfile.darwin.symlink) is linked only on that platform, with
+# the tag stripped from the target name (~/.Brewfile).
 install_dotfiles() {
-	info 'installing dotfiles'
+	info "installing dotfiles ($DOTFILES_TAGS)"
 	find -H "$DOTFILES_ROOT" -maxdepth 3 -name '*.symlink' -not -path '*.git*' |
 		while read -r src; do
-			dst="$HOME/.$(basename "${src%.*}")"
-			link_file "$src" "$dst"
+			name="$(basename "${src%.symlink}")"
+			tag="${name##*.}"
+			case "$tag" in
+			darwin | linux | arch | debian)
+				case " $DOTFILES_TAGS " in
+				*" $tag "*) name="${name%.*}" ;;
+				*) continue ;;
+				esac
+				;;
+			esac
+			link_file "$src" "$HOME/.$name"
 		done
 }
 
-find_zsh() {
-	if which zsh >/dev/null 2>&1 && grep "$(which zsh)" /etc/shells >/dev/null; then
-		which zsh
+# Remove dotfile symlinks that point into this repo but whose target is gone
+# (e.g. a topic was removed, or a file is tagged for another platform).
+cleanup_dotfiles() {
+	for link in "$HOME"/.[!.]*; do
+		[ -L "$link" ] || continue
+		case "$(readlink "$link")" in
+		"$DOTFILES_ROOT"/* | "$HOME/.dotfiles"/*)
+			if [ ! -e "$link" ]; then
+				rm "$link"
+				success "removed dangling $link"
+			fi
+			;;
+		esac
+	done
+}
+
+setup_packages() {
+	info "installing packages ($DOTFILES_TAGS)"
+	case "$DOTFILES_OS/$DOTFILES_DISTRO" in
+	darwin/*) "$DOTFILES_ROOT"/homebrew/install.darwin.sh ;;
+	linux/arch) "$DOTFILES_ROOT"/pacman/install.arch.sh ;;
+	linux/debian) "$DOTFILES_ROOT"/apt/install.debian.sh ;;
+	*) info "no package installer for $DOTFILES_OS/$DOTFILES_DISTRO; skipping" ;;
+	esac
+	success 'packages'
+}
+
+# On Linux the login shell is usually bash; offer to switch to zsh.
+setup_shell() {
+	[ "$DOTFILES_OS" = linux ] || return 0
+	zsh_path="$(command -v zsh || true)"
+	[ -n "$zsh_path" ] || return 0
+	case "$SHELL" in *zsh) return 0 ;; esac
+	if [ -t 0 ]; then
+		user " - Change your login shell to $zsh_path? [y/N]"
+		read -r answer
+		case "$answer" in
+		[Yy]*)
+			chsh -s "$zsh_path"
+			success "login shell set to zsh (takes effect at next login)"
+			;;
+		*) info "keeping $SHELL" ;;
+		esac
 	else
-		echo "/bin/zsh"
+		info "login shell is $SHELL; run 'chsh -s $zsh_path' to switch to zsh"
 	fi
 }
 
 setup_gitconfig
 install_dotfiles
-setup_homebrew
+cleanup_dotfiles
+setup_packages
+setup_shell
 
 info "installing dependencies"
 if ./bin/dot_update; then

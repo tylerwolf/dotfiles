@@ -1,25 +1,42 @@
-# Find all .sh files and shell scripts in bin/ (excluding Ruby scripts)
-SHELL_FILES := $(wildcard */*.sh) $(wildcard script/*)
-BIN_SCRIPTS := $(filter-out bin/git-wtf, $(wildcard bin/*))
+# Find all .sh files and shell scripts in bin/ and script/ (excluding Dockerfiles)
+SHELL_FILES := $(wildcard */*.sh) $(filter-out script/docker, $(wildcard script/*))
+BIN_SCRIPTS := $(wildcard bin/*)
 
-.PHONY: lint verify vm-setup vm-test vm-shell vm-ready vm-cleanup
+.PHONY: lint verify macos-setup macos-test macos-shell macos-ready macos-cleanup \
+        linux-test arch-test ubuntu-test arch-shell ubuntu-shell
 lint:
 	shellcheck $(SHELL_FILES) $(BIN_SCRIPTS)
 
 verify:
 	./script/verify
 
-vm-setup:
-	./script/test-vm setup
+# macOS (Tart VMs)
+macos-setup:
+	./script/test-macos setup
 
-vm-test:
-	./script/test-vm test
+macos-test:
+	./script/test-macos test
 
-vm-shell:
-	-./script/test-vm shell
+macos-shell:
+	-./script/test-macos shell
 
-vm-ready:
-	-./script/test-vm ready
+macos-ready:
+	-./script/test-macos ready
 
-vm-cleanup:
-	./script/test-vm cleanup
+macos-cleanup:
+	./script/test-macos cleanup
+
+# Linux (Docker containers)
+linux-test: arch-test ubuntu-test
+
+arch-test:
+	./script/test-linux test arch
+
+ubuntu-test:
+	./script/test-linux test ubuntu
+
+arch-shell:
+	-./script/test-linux shell arch
+
+ubuntu-shell:
+	-./script/test-linux shell ubuntu

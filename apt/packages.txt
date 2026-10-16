@@ -1,0 +1,21 @@
+# Debian/Ubuntu base packages, installed with apt by apt/install.debian.sh.
+# Modern CLI tools that apt ships stale or missing (fzf, bat, fd, eza, delta,
+# zoxide, atuin, ripgrep, gh) come from mise/cli-tools.debian.toml instead.
+# Keep in sync with homebrew/Brewfile.darwin.symlink (macOS) and
+# pacman/packages.txt (Arch).
+
+zsh
+git
+curl
+ca-certificates
+shellcheck
+libatomic1       # needed by node binaries from mise
+
+# Development tools
+jq
+
+# Utilities
+btop
+tealdeer        # tldr
+cowsay
+vim

@@ -1,6 +1,7 @@
 #!/bin/sh
 
-eval "$(/opt/homebrew/bin/brew shellenv)"
+# shellcheck source=script/os.sh
+. "$(dirname "$0")/../script/os.sh"
 
 # Use main as the default branch for new repos
 git config --global init.defaultBranch main
@@ -8,15 +9,20 @@ git config --global init.defaultBranch main
 # Point git at the global ignore file symlinked by bootstrap
 git config --global core.excludesfile ~/.gitignore
 
-# Don't ask ssh password all the time
-# if [ "$(uname -s)" = "Darwin" ]; then
-# 	git config --global credential.helper osxkeychain
-# else
-# 	git config --global credential.helper cache
-# fi
+# Don't ask for credentials all the time
+if [ "$DOTFILES_OS" = darwin ]; then
+	git config --global --replace-all credential.helper osxkeychain
+else
+	git config --global --replace-all credential.helper cache
+fi
 
-# better diffs with delta
-if command -v delta >/dev/null 2>&1; then
+# better diffs with delta (on Ubuntu delta is installed by mise, which only
+# activates in zsh, so ask mise where it is)
+has_delta() {
+	command -v delta >/dev/null 2>&1 && return 0
+	command -v mise >/dev/null 2>&1 && mise which delta >/dev/null 2>&1
+}
+if has_delta; then
 	git config --global core.pager delta
 	git config --global interactive.diffFilter "delta --color-only"
 	git config --global delta.navigate true

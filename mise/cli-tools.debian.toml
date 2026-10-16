@@ -1,0 +1,16 @@
+# Modern CLI tools for Debian/Ubuntu, where apt ships them stale or not at all
+# (Ubuntu 24.04: fzf 0.44 lacks --zsh, bat/fd are batcat/fdfind, atuin and a
+# working gh are missing). mise installs upstream release binaries under their
+# canonical names. Linked to ~/.config/mise/conf.d/cli-tools.toml by
+# mise/install.debian.sh. macOS and Arch get these from Homebrew / pacman.
+
+[tools]
+fzf = "latest"
+bat = "latest"
+fd = "latest"
+eza = "latest"
+delta = "latest"
+zoxide = "latest"
+atuin = "latest"
+ripgrep = "latest"
+gh = "latest"

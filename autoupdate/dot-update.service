@@ -1,0 +1,8 @@
+[Unit]
+Description=Update dotfiles (git pull + run topic installers)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.dotfiles/bin/dot_update

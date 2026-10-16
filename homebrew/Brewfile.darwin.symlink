@@ -1,3 +1,6 @@
+# macOS packages (Homebrew). Keep in sync with pacman/packages.txt (Arch) and
+# apt/packages.txt + mise/cli-tools.debian.toml (Ubuntu).
+
 # Replace outdated system libraries
 brew 'git'
 brew 'openssl'
@@ -12,20 +15,18 @@ brew 'shellcheck'
 brew 'ripgrep'      # fast code search (replaces ack)
 brew 'fd'           # fast find replacement
 brew 'bat'          # cat with syntax highlighting
-brew 'eza'          # modern ls with git awareness
+brew 'eza'          # modern ls with git awareness (eza --tree replaces tree)
 brew 'git-delta'    # better git diffs (replaces diff-so-fancy)
 brew 'zoxide'       # smarter cd (replaces z)
 brew 'fzf'          # fuzzy finder for everything
 brew 'atuin'        # better shell history (replaces zsh history)
 
 # Development tools
-brew 'asdf'
+brew 'mise'         # runtime versions (replaces asdf) + per-directory env (replaces direnv)
 brew 'gh'           # GitHub CLI
 brew 'jq'           # JSON processor
-brew 'direnv'       # per-directory env vars
 
 # Utilities
 brew 'btop'         # system monitor
-brew 'tldr'         # simplified man pages
-brew 'tree'         # directory tree viewer
+brew 'tealdeer'     # tldr client (the `tldr` formula was disabled upstream)
 brew 'cowsay'

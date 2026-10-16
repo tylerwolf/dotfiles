@@ -6,10 +6,12 @@
   <a href="https://github.com/tylerwolf/dotfiles/actions/workflows/ci.yml"><img src="https://github.com/tylerwolf/dotfiles/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/macOS-Tahoe-000000?logo=apple&logoColor=white" alt="macOS Tahoe">
+  <img src="https://img.shields.io/badge/CachyOS-Arch-1793D1?logo=archlinux&logoColor=white" alt="CachyOS">
+  <img src="https://img.shields.io/badge/Ubuntu-24.04-E95420?logo=ubuntu&logoColor=white" alt="Ubuntu 24.04">
 </p>
 
 <p align="center">
-  Topic-based dotfiles for macOS — organized, tested, and auto-updating.
+  Topic-based dotfiles for macOS and Linux — organized, tested, and auto-updating.
 </p>
 
 ---
@@ -17,7 +19,7 @@
 ## Install
 
 ```console
-git clone git@github.com:tylerwolf/dotfiles.git ~/.dotfiles
+git clone https://github.com/tylerwolf/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 ./script/bootstrap
 ```
@@ -25,8 +27,30 @@ cd ~/.dotfiles
 Bootstrap will:
 1. Set up your git author name/email (interactive, first run only)
 2. Symlink all `*.symlink` files into `$HOME` (existing files backed up with `.backup` suffix)
-3. Install Homebrew and everything in the `Brewfile`
-4. Run all topic `install.sh` scripts (antidote, asdf, git config, autoupdate launchd)
+3. Install packages for your platform (see below)
+4. On Linux, offer to make zsh your login shell
+5. Run all topic `install.sh` scripts (antidote, mise, git config, auto-update)
+
+## Platforms
+
+The same repo serves three kinds of machine, using the native package manager on each:
+
+| Platform | Packages | Auto-update | Notes |
+|----------|----------|-------------|-------|
+| macOS (Apple Silicon) | Homebrew `Brewfile` | launchd agent | `macos/` system defaults |
+| Arch-based Linux (CachyOS) | `pacman` + AUR via `yay`/`paru` | systemd user timer | Wayland clipboard via `wl-clipboard` |
+| Debian/Ubuntu (24.04 LTS) | `apt` for base packages, **mise** for modern CLI tools | systemd user timer | apt ships tools like `fzf`, `bat`, `fd`, `eza`, `gh` stale or missing, so mise installs upstream releases |
+
+Platform detection lives in `script/os.sh` (`DOTFILES_OS` = `darwin`/`linux`, `DOTFILES_DISTRO` = `arch`/`debian`).
+Files tagged with a platform name are only used there:
+
+| File name | Used on |
+|-----------|---------|
+| `foo.zsh`, `install.sh`, `foo.symlink` | every platform |
+| `foo.darwin.zsh`, `install.darwin.sh`, `Brewfile.darwin.symlink` | macOS only (symlinked as `~/.Brewfile`) |
+| `foo.linux.zsh`, `install.linux.sh` | any Linux |
+| `foo.arch.zsh`, `install.arch.sh` | Arch family |
+| `foo.debian.zsh`, `install.debian.sh` | Debian/Ubuntu |
 
 ## What's Included
 
@@ -34,61 +58,71 @@ Bootstrap will:
 
 | Topic | Purpose |
 |-------|---------|
-| `antidote/` | Zsh plugin manager (replaces antigen/oh-my-zsh) |
-| `asdf/` | Multi-runtime version manager (Node, Ruby, Python, etc.) |
+| `antidote/` | Zsh plugin manager (git-cloned to `~/.antidote` on every platform) |
+| `apt/` | Debian/Ubuntu base package list and installer |
 | `atuin/` | Synced, searchable shell history |
-| `autoupdate/` | Launchd agent that pulls & re-runs installers every 2 hours |
-| `direnv/` | Per-directory environment variables |
+| `autoupdate/` | launchd agent (macOS) or systemd user timer (Linux) that pulls & re-runs installers every 2 hours |
 | `fzf/` | Fuzzy finder integration and key bindings |
 | `git/` | Git config, aliases, and global ignore |
-| `homebrew/` | Brewfile with all packages, casks, and fonts |
+| `homebrew/` | macOS Brewfile and installer |
 | `macos/` | macOS system/Finder/Dock preferences |
-| `system/` | Shell aliases, environment, and PATH setup |
+| `mise/` | Runtime version manager (replaces asdf) and per-directory env (replaces direnv); on Ubuntu also installs the modern CLI tools |
+| `pacman/` | Arch package lists (official + AUR) and installer |
+| `system/` | Shell aliases, environment, PATH, and a cross-platform `pbcopy`/`pbpaste`/`open` |
 | `vim/` | Vim configuration |
-| `xcode/` | Xcode Command Line Tools installer |
+| `xcode/` | iOS Simulator alias (macOS only) |
 | `zoxide/` | Smarter `cd` with directory frecency |
 | `zsh/` | Zsh config, prompt, and plugin loading |
 
 ### Modern CLI Replacements
 
-All installed via Homebrew:
+Installed via Homebrew on macOS, pacman on Arch, and mise on Ubuntu:
 
 | Tool | Replaces | What it does |
 |------|----------|-------------|
-| [`eza`](https://github.com/eza-community/eza) | `ls` | Modern ls with git awareness and tree view |
+| [`eza`](https://github.com/eza-community/eza) | `ls`, `tree` | Modern ls with git awareness and tree view |
 | [`bat`](https://github.com/sharkdp/bat) | `cat` | Cat with syntax highlighting and line numbers |
 | [`fd`](https://github.com/sharkdp/fd) | `find` | Fast, user-friendly file finder |
 | [`ripgrep`](https://github.com/BurntSushi/ripgrep) | `grep`/`ack` | Blazing-fast recursive code search |
 | [`zoxide`](https://github.com/ajeetdsouza/zoxide) | `cd`/`z` | Smarter cd that learns your habits |
-| [`git-delta`](https://github.com/dandavella/delta) | `diff` | Beautiful git diffs with syntax highlighting |
+| [`git-delta`](https://github.com/dandavison/delta) | `diff` | Beautiful git diffs with syntax highlighting |
 | [`atuin`](https://github.com/atuinsh/atuin) | `history` | Synced, searchable shell history |
-| [`tldr`](https://github.com/tldr-pages/tldr) | `man` | Simplified, example-driven man pages |
+| [`mise`](https://mise.jdx.dev) | `asdf`, `direnv` | Runtime versions (reads `.tool-versions`) and per-directory env |
+| [`tealdeer`](https://github.com/tealdeer-rs/tealdeer) | `man` | Fast `tldr` client with simplified, example-driven pages |
 | [`btop`](https://github.com/aristocratos/btop) | `top`/`htop` | Beautiful system resource monitor |
 
 ## How It Works
 
-Everything is organized into **topic directories** (e.g., `git/`, `fzf/`, `zsh/`). The zsh loader (`zsh/zshrc.symlink`) auto-discovers files by naming convention:
+Everything is organized into **topic directories** (e.g., `git/`, `fzf/`, `zsh/`). The zsh loader (`zsh/zshrc.symlink`) auto-discovers files by naming convention, skipping files tagged for another platform:
 
 | Pattern | When loaded | Purpose |
 |---------|------------|---------|
 | `path.zsh` | First | `$PATH` modifications |
 | `*.zsh` | Second | Config, aliases, functions |
 | `completion.zsh` | Last | Shell completions |
-| `install.sh` | On bootstrap/update | One-time setup for the topic |
+| `install.sh` | On bootstrap/update | One-time setup for the topic (package-manager topics run first) |
 | `*.symlink` | On bootstrap | Symlinked to `$HOME/.filename` |
 
 **`bin/`** is added to `$PATH` — anything in there is available everywhere.
 
+Package lists are kept per platform and cross-referenced in their headers:
+`homebrew/Brewfile.darwin.symlink`, `pacman/packages.txt` (+ `aur.txt`), `apt/packages.txt`, and `mise/cli-tools.debian.toml`.
+When adding a tool, add it to all of them.
+
 ## Keeping Up to Date
 
-A launchd agent (installed by `autoupdate/install.sh`) runs `bin/dot_update` every 2 hours, which pulls the latest changes, updates submodules, re-runs all installers, and refreshes antidote plugins.
+`bin/dot_update` pulls the latest changes, updates submodules, re-runs all installers, and upgrades mise-managed tools.
+It runs every 2 hours from a launchd agent on macOS or a systemd user timer (`dot-update.timer`) on Linux, both installed by the `autoupdate/` topic.
+On a headless Linux box the installer enables lingering so the timer runs without a login session.
+Package installs that need a sudo password are skipped when there is no terminal; run `dot_update` interactively to pick them up.
 
 ## Local Customization
 
 These files are not checked in and won't be overwritten:
 
-- **`~/.localrc`** — sourced at end of zshrc (secrets, machine-specific config)
+- **`~/.localrc`** — sourced at end of zshrc and by `dot_update` (keep it POSIX sh compatible)
 - **`~/.gitconfig.local`** — included by gitconfig for machine-specific git settings
+- **`~/.config/mise/config.local.toml`** — machine-specific mise tools
 
 ## macOS Defaults
 
@@ -98,37 +132,50 @@ Optionally apply preferred macOS system/Finder/Dock settings:
 ./macos/set-defaults.sh
 ```
 
-Requires a logout or restart to take full effect.
+Requires a logout or restart to take full effect. The script is a no-op on Linux.
 
 ## Testing & CI
 
-A GitHub Actions CI pipeline runs on every push: shellcheck linting on Ubuntu and a full bootstrap + verification on a macOS runner.
+A GitHub Actions CI pipeline runs on every push: shellcheck linting, then a full bootstrap + verification on a macOS runner, in a CachyOS container, and on an Ubuntu 24.04 runner.
 
-Locally, you can verify a bootstrapped machine or test in a sandboxed VM:
+Locally, you can verify a bootstrapped machine, or test a fresh bootstrap in a sandbox:
 
 ```console
-make lint        # shellcheck all shell scripts
-make verify      # run post-bootstrap verification checks
-make vm-setup    # one-time: install Tart, pull macOS Tahoe base image
-make vm-test     # automated: clone VM, run bootstrap, verify results, cleanup
-make vm-shell    # interactive: clone VM, print SSH info for manual exploration
-make vm-ready    # pre-bootstrapped: clone VM, bootstrap + defaults, print SSH info
-make vm-cleanup  # stop and delete all leftover dotfiles-test-* VMs
+make lint          # shellcheck all shell scripts
+make verify        # run post-bootstrap verification checks for this platform
+
+# macOS (Tart VMs, Apple Silicon)
+make macos-setup      # one-time: install Tart, pull macOS Tahoe base image
+make macos-test       # automated: clone VM, run bootstrap, verify results, cleanup
+make macos-shell      # interactive: clone VM, print SSH info for manual exploration
+make macos-ready      # pre-bootstrapped: clone VM, bootstrap + defaults, print SSH info
+make macos-cleanup    # stop and delete all leftover dotfiles-test-* VMs
+
+# Linux (Docker; x86-64 images matching the real machines)
+make linux-test    # automated: bootstrap + verify in CachyOS and Ubuntu 24.04 containers
+make arch-test     # CachyOS only
+make ubuntu-test   # Ubuntu only
+make arch-shell    # interactive: bootstrap a CachyOS container, open zsh
+make ubuntu-shell  # interactive: bootstrap an Ubuntu container, open zsh
 ```
+
+Containers have no systemd, so the auto-update timer is only verified as installed files there; the Ubuntu CI runner exercises it for real.
 
 ## Adding a New Topic
 
 1. Create a directory named after the tool (e.g., `node/`)
 2. Add `path.zsh` if PATH changes are needed
 3. Add `config.zsh` or `aliases.zsh` for shell configuration
-4. Add `install.sh` for one-time setup
+4. Add `install.sh` for one-time setup (source `script/os.sh` for `$DOTFILES_OS`/`$DOTFILES_DISTRO`)
 5. Add `*.symlink` files for dotfiles that should land in `$HOME`
+6. Tag any platform-specific file with `.darwin`, `.linux`, `.arch` or `.debian` before its extension
+7. Add the package to every platform's package list
 
 Existing files are backed up with `.backup` suffix during symlink creation.
 
 ## Credits
 
-Forked from [holman/dotfiles](https://github.com/holman/dotfiles), with ideas from [caarlos0/dotfiles](https://github.com/caarlos0/dotfiles).
+Forked from [holman/dotfiles](https://github.com/holman/dotfiles), with ideas from [caarlos0/dotfiles](https://github.com/caarlos0/dotfiles), [webpro/dotfiles](https://github.com/webpro/dotfiles) and [natelandau/dotfiles](https://github.com/natelandau/dotfiles).
 
 ## License
 

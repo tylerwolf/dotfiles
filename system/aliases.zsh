@@ -1,4 +1,5 @@
-# modern ls using eza (falls back to gls, then plain ls)
+# modern ls using eza (falls back to GNU ls: gls from Homebrew coreutils on macOS,
+# the system ls on Linux)
 if command -v eza &>/dev/null; then
   alias l='eza -lF'
   alias la='eza -laF'
@@ -13,6 +14,13 @@ elif command -v gls &>/dev/null; then
   alias lt='gls -ltFh --color'
   alias ll='gls -l --color'
   alias ldot='gls -ld --color .*'
+elif ls --color=auto -d . &>/dev/null; then
+  alias l='ls -lFh --color=auto'
+  alias la='ls -lAFh --color=auto'
+  alias lr='ls -tRFh --color=auto'
+  alias lt='ls -ltFh --color=auto'
+  alias ll='ls -l --color=auto'
+  alias ldot='ls -ld --color=auto .*'
 fi
 
 alias rm='rm -i'

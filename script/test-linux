@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# test-linux — Sandboxed dotfiles testing in Docker (CachyOS and Ubuntu 24.04)
+#
+# Usage:
+#   script/test-linux test  {arch|ubuntu}  — build image, run bootstrap + verify, exit
+#   script/test-linux shell {arch|ubuntu}  — build image, run bootstrap, drop into zsh
+#
+# The repo (including uncommitted changes) is copied into ~/.dotfiles inside the
+# container, mirroring what script/test-macos does for macOS. Images are x86-64 to
+# match the real machines; on Apple Silicon they run under Rosetta/QEMU.
+
+set -euo pipefail
+
+DOTFILES_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+PLATFORM="${DOTFILES_DOCKER_PLATFORM:-linux/amd64}"
+
+info()    { printf "\r  [ \033[00;34m..\033[0m ] %s\n" "$1" >&2; }
+success() { printf "\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n" "$1" >&2; }
+fail()    { printf "\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n" "$1" >&2; exit 1; }
+
+usage() {
+  echo "Usage: script/test-linux {test|shell} {arch|ubuntu}"
+  echo ""
+  echo "  test   — Automated: build image, run bootstrap, verify, exit"
+  echo "  shell  — Interactive: build image, run bootstrap, open a zsh shell"
+  exit 1
+}
+
+cmd="${1:-}"
+distro="${2:-}"
+case "$cmd" in test | shell) ;; *) usage ;; esac
+case "$distro" in arch | ubuntu) ;; *) usage ;; esac
+
+command -v docker >/dev/null 2>&1 || fail "docker not found"
+docker info >/dev/null 2>&1 || fail "docker daemon is not running (start Docker Desktop)"
+
+image="dotfiles-test-$distro"
+
+info "building $image image"
+docker build --platform "$PLATFORM" -q \
+  -t "$image" \
+  -f "$DOTFILES_ROOT/script/docker/$distro.Dockerfile" \
+  "$DOTFILES_ROOT/script/docker" >/dev/null
+success "image built"
+
+# Runs inside the container. Clones the mounted repo (committed state), overlays
+# the working tree so uncommitted changes are tested, seeds git config, then
+# bootstraps and verifies.
+read -r -d '' provision <<'INNER' || true
+set -e
+git clone -q /src ~/.dotfiles
+# mirror the working tree exactly: drop tracked files first so local deletions apply
+(cd ~/.dotfiles && git ls-files -z | xargs -0 rm -f)
+tar -C /src --exclude .git -cf - . | tar -C ~/.dotfiles -xf -
+git -C ~/.dotfiles add -A
+git -C ~/.dotfiles -c user.name=test -c user.email=test@dotfiles.local commit -q --allow-empty -m local-changes
+git config --global user.name 'Test User'
+git config --global user.email 'test@dotfiles.local'
+git config --global dotfiles.managed true
+cd ~/.dotfiles
+./script/bootstrap
+./script/verify
+zsh -ic 'echo "zsh started OK"'
+INNER
+
+run=(docker run --rm --platform "$PLATFORM" -v "$DOTFILES_ROOT:/src:ro" "$image")
+
+case "$cmd" in
+test)
+  info "running bootstrap + verify in $distro container"
+  "${run[@]}" bash -c "$provision" || fail "$distro test failed"
+  success "$distro test passed"
+  ;;
+shell)
+  info "running bootstrap in $distro container, then opening a shell"
+  docker run --rm -it --platform "$PLATFORM" -v "$DOTFILES_ROOT:/src:ro" "$image" \
+    bash -c "$provision; exec zsh -l"
+  ;;
+esac

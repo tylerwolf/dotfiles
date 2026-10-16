@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-# test-vm — Sandboxed dotfiles testing with Tart macOS VMs
+# test-macos — Sandboxed dotfiles testing with Tart macOS VMs
 #
 # Usage:
-#   script/test-vm setup   — Install Tart and pull macOS base image
-#   script/test-vm test    — Automated: clone VM, run bootstrap, verify, cleanup
-#   script/test-vm shell   — Interactive: clone VM, print SSH info, wait for Ctrl-C
-#   script/test-vm ready   — Pre-bootstrapped: clone VM, bootstrap, defaults, wait
+#   script/test-macos setup   — Install Tart and pull macOS base image
+#   script/test-macos test    — Automated: clone VM, run bootstrap, verify, cleanup
+#   script/test-macos shell   — Interactive: clone VM, print SSH info, wait for Ctrl-C
+#   script/test-macos ready   — Pre-bootstrapped: clone VM, bootstrap, defaults, wait
 
 set -euo pipefail
 
@@ -184,6 +184,8 @@ setup_vm() {
   # shellcheck disable=SC2088
   scp_to_vm "$VM_IP" "$tarball" "~/dotfiles.tar.gz"
   rm -f "$tarball"
+  # mirror the working tree exactly: drop tracked files first so local deletions apply
+  ssh_cmd "$VM_IP" "cd ~/.dotfiles && git ls-files -z | xargs -0 rm -f"
   ssh_cmd "$VM_IP" "tar xzf ~/dotfiles.tar.gz -C ~/.dotfiles && rm ~/dotfiles.tar.gz"
   ssh_cmd "$VM_IP" "git -C ~/.dotfiles add -A"
   ssh_cmd "$VM_IP" "git -C ~/.dotfiles commit --allow-empty -m local-changes"
@@ -220,7 +222,7 @@ cmd_setup() {
 
 cmd_test() {
   if ! command -v tart >/dev/null 2>&1; then
-    fail "Tart not found. Run 'make vm-setup' first."
+    fail "Tart not found. Run 'make macos-setup' first."
   fi
 
   trap cleanup EXIT
@@ -235,7 +237,7 @@ cmd_test() {
 
 cmd_shell() {
   if ! command -v tart >/dev/null 2>&1; then
-    fail "Tart not found. Run 'make vm-setup' first."
+    fail "Tart not found. Run 'make macos-setup' first."
   fi
 
   trap cleanup EXIT
@@ -247,7 +249,7 @@ cmd_shell() {
 
 cmd_ready() {
   if ! command -v tart >/dev/null 2>&1; then
-    fail "Tart not found. Run 'make vm-setup' first."
+    fail "Tart not found. Run 'make macos-setup' first."
   fi
 
   trap cleanup EXIT
@@ -283,7 +285,7 @@ case "${1:-}" in
   ready)   cmd_ready ;;
   cleanup) cmd_cleanup ;;
   *)
-    echo "Usage: script/test-vm {setup|test|shell|ready|cleanup}"
+    echo "Usage: script/test-macos {setup|test|shell|ready|cleanup}"
     echo ""
     echo "  setup    — Install Tart and pull macOS base image"
     echo "  test     — Automated: clone VM, run bootstrap, verify, cleanup"

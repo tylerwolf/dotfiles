@@ -1,12 +1,43 @@
 #!/bin/sh
 #
-# Run all dotfiles installers.
+# Run all dotfiles installers for this platform.
+#
+# Discovers tracked `topic/install.sh` (every platform) and
+# `topic/install.<tag>.sh` (only when <tag> is in $DOTFILES_TAGS: darwin, linux,
+# arch, debian). Package-manager topics (including mise) run first so later
+# installers find their tools.
 
 cd "$(dirname "$0")"/.. || exit 1
+# shellcheck source=script/os.sh
+. ./script/os.sh
 
-# find the installers and run them iteratively
-# Note: </dev/null prevents installers from consuming the pipeline's stdin
-git ls-tree --name-only -r HEAD | grep install.sh | while read -r installer; do
+PACKAGE_TOPICS="homebrew pacman apt mise"
+
+run_installer() {
+	installer="$1"
+	tag="${installer##*/install}"
+	tag="${tag%.sh}"
+	tag="${tag#.}"
+	if [ -n "$tag" ]; then
+		case " $DOTFILES_TAGS " in
+		*" $tag "*) ;;
+		*) return 0 ;;
+		esac
+	fi
 	echo "› ${installer}..."
-	sh -c "$installer" </dev/null
+	sh -c "$installer"
+}
+
+installers="$(git ls-tree --name-only -r HEAD | grep -E '^[^/]+/install(\.[a-z]+)?\.sh$' | sort)"
+
+# package managers first
+for installer in $installers; do
+	topic="${installer%%/*}"
+	case " $PACKAGE_TOPICS " in *" $topic "*) run_installer "$installer" ;; esac
+done
+
+# then everything else
+for installer in $installers; do
+	topic="${installer%%/*}"
+	case " $PACKAGE_TOPICS " in *" $topic "*) ;; *) run_installer "$installer" ;; esac
 done

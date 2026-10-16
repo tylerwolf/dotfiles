@@ -1,0 +1,10 @@
+# Global mise config — linked to ~/.config/mise/config.toml by mise/install.sh.
+# Runtime versions live here (was ~/.tool-versions under asdf). Per-project
+# .tool-versions / mise.toml files still override these.
+
+[tools]
+node = "25.8.0"
+
+[settings]
+# read .node-version / .nvmrc etc. (was `legacy_version_file = yes` in .asdfrc)
+idiomatic_version_file_enable_tools = ["node"]

@@ -16,7 +16,7 @@ jobs:
       - name: Run shellcheck
         run: make lint
 
-  bootstrap:
+  bootstrap-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,3 +38,54 @@ jobs:
 
       - name: Run verification
         run: ./script/verify
+
+  bootstrap-arch:
+    runs-on: ubuntu-latest
+    container: cachyos/cachyos:latest
+    steps:
+      - name: Install prerequisites
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed sudo git zsh base-devel
+
+      - uses: actions/checkout@v4
+
+      - name: Symlink checkout to ~/.dotfiles and pre-seed git config
+        run: |
+          git config --global --add safe.directory '*'
+          ln -s "$GITHUB_WORKSPACE" "$HOME/.dotfiles"
+          git config --global user.name "CI User"
+          git config --global user.email "ci@dotfiles.local"
+          git config --global dotfiles.managed true
+
+      - name: Run bootstrap
+        run: ./script/bootstrap
+
+      - name: Run verification
+        run: ./script/verify
+
+      - name: Start zsh
+        run: zsh -ic 'echo "zsh started OK"'
+
+  bootstrap-ubuntu:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Symlink checkout to ~/.dotfiles
+        run: ln -s "$GITHUB_WORKSPACE" "$HOME/.dotfiles"
+
+      - name: Pre-seed git config
+        run: |
+          git config --global user.name "CI User"
+          git config --global user.email "ci@dotfiles.local"
+          git config --global dotfiles.managed true
+
+      - name: Run bootstrap
+        run: ./script/bootstrap
+
+      - name: Run verification
+        run: ./script/verify
+
+      - name: Start zsh
+        run: zsh -ic 'echo "zsh started OK"'

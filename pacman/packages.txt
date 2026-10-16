@@ -1,0 +1,29 @@
+# Arch-family packages (CachyOS), installed with pacman by pacman/install.arch.sh.
+# Keep in sync with homebrew/Brewfile.darwin.symlink (macOS) and
+# apt/packages.txt + mise/cli-tools.debian.toml (Ubuntu).
+
+zsh
+git
+shellcheck
+
+# Modern replacements
+ripgrep
+fd
+bat
+eza
+git-delta
+zoxide
+fzf
+atuin
+
+# Development tools
+mise
+github-cli      # gh
+jq
+
+# Utilities
+btop
+tealdeer        # tldr
+cowsay
+vim
+wl-clipboard    # pbcopy/pbpaste shim on Wayland

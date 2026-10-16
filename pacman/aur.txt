@@ -1,0 +1,2 @@
+# AUR packages, installed with yay (or paru) by pacman/install.arch.sh.
+# Currently empty: everything we use is in the official repos.

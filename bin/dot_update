@@ -7,14 +7,18 @@
 export DOTFILES="$HOME/.dotfiles"
 cd "$DOTFILES" || exit 1
 
-# fixes PATH (we could be running from launchd)
+# fixes PATH (we could be running from launchd or a systemd timer)
 PATH="$(command -p getconf PATH):/usr/local/bin"
+
+# platform detection; also puts Homebrew (macOS) and ~/.local/bin on PATH
+# shellcheck source=script/os.sh
+. "$DOTFILES/script/os.sh"
 
 # load custom config if any
 # shellcheck disable=SC1090
 [ -f ~/.localrc ] && . ~/.localrc
 
-# ssh would not work under launchd, add a https one
+# ssh would not work under launchd/systemd, add a https one
 echo "› setting up update channel"
 git remote add updates https://github.com/tylerwolf/dotfiles.git 2>/dev/null
 
@@ -30,9 +34,10 @@ git submodule update --init --recursive --remote --merge --quiet
 echo "› $DOTFILES/script/install"
 "$DOTFILES/script/install"
 
-if which antidote >/dev/null 2>&1; then
-	echo "› antidote update"
-	antidote update
+# Refresh mise-managed tools (runtimes everywhere; CLI tools on Ubuntu)
+if command -v mise >/dev/null 2>&1; then
+	echo "› mise upgrade"
+	MISE_YES=1 mise upgrade
 fi
 
 echo "› registering last update"

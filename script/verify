@@ -1,108 +1,187 @@
 #!/bin/bash
 #
-# verify — Verify that dotfiles bootstrap completed successfully
+# verify — Verify that dotfiles bootstrap completed successfully.
 #
-# Checks symlinks, Homebrew packages, git config, antidote, asdf, and launchd agent.
-# Runs locally (used by both CI and script/test-vm via SSH).
+# Platform-aware: common checks everywhere, then Homebrew/launchd/defaults on
+# macOS, pacman on Arch, apt + mise CLI tools on Debian/Ubuntu, and the
+# systemd timer on Linux. Runs locally (used by CI, script/test-macos and
+# script/test-linux).
 
 set -uo pipefail
 
+DOTFILES_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+# shellcheck source=script/os.sh
+. "$DOTFILES_ROOT/script/os.sh"
+
 success() { printf "\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n" "$1" >&2; }
 fail_msg() { printf "\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n" "$1" >&2; }
+info() { printf "\r\033[2K  [ \033[00;34m..\033[0m ] %s\n" "$1" >&2; }
 
 failures=0
+flunk() {
+  fail_msg "$1"
+  failures=$((failures + 1))
+}
 
-# Check symlinks
-symlinks=(".asdfrc" ".gitignore" ".vimrc" ".Brewfile" ".zshrc")
+info "platform: $DOTFILES_TAGS"
+
+# ─── Common ───────────────────────────────────────────────────────────────────
+
+symlinks=(".gitignore" ".vimrc" ".zshrc")
+[ "$DOTFILES_OS" = darwin ] && symlinks+=(".Brewfile")
 for link in "${symlinks[@]}"; do
   if [ -L "$HOME/$link" ]; then
     success "symlink: ~/$link"
   else
-    fail_msg "symlink missing: ~/$link"
-    failures=$((failures + 1))
+    flunk "symlink missing: ~/$link"
   fi
 done
 
-# Check Homebrew installed
-if /opt/homebrew/bin/brew --version >/dev/null 2>&1; then
-  success "homebrew installed"
+if [ -L "$HOME/.asdfrc" ] || [ -L "$HOME/.Brewfile" ] && [ "$DOTFILES_OS" != darwin ]; then
+  flunk "stale symlink present (~/.asdfrc or ~/.Brewfile on Linux)"
 else
-  fail_msg "homebrew not installed"
-  failures=$((failures + 1))
+  success "no stale symlinks"
 fi
 
-# Check key brew packages
-packages=("git" "git-delta" "shellcheck" "atuin")
-for pkg in "${packages[@]}"; do
-  if /opt/homebrew/bin/brew list "$pkg" >/dev/null 2>&1; then
-    success "brew package: $pkg"
-  else
-    fail_msg "brew package missing: $pkg"
-    failures=$((failures + 1))
-  fi
-done
-
-# Check git config
 if git config --global --get core.pager 2>/dev/null | grep -q delta; then
   success "git core.pager uses delta"
 else
-  fail_msg "git core.pager not set to delta"
-  failures=$((failures + 1))
+  flunk "git core.pager not set to delta"
 fi
 
-# Check antidote (installed via brew)
-if /opt/homebrew/bin/brew list antidote >/dev/null 2>&1; then
-  success "antidote installed"
+if [ -d "$HOME/.antidote" ]; then
+  success "antidote cloned to ~/.antidote"
 else
-  fail_msg "antidote not installed"
-  failures=$((failures + 1))
+  flunk "antidote missing (~/.antidote)"
 fi
 
-# Check antidote plugins were generated
 if [ -s "$HOME/.zsh_plugins.zsh" ]; then
   success "antidote plugins generated (~/.zsh_plugins.zsh is non-empty)"
 else
-  fail_msg "antidote plugins not generated (~/.zsh_plugins.zsh missing or empty)"
-  failures=$((failures + 1))
+  flunk "antidote plugins not generated (~/.zsh_plugins.zsh missing or empty)"
 fi
 
-# Check asdf (installed via brew)
-if /opt/homebrew/bin/brew list asdf >/dev/null 2>&1; then
-  success "asdf installed"
+if command -v mise >/dev/null 2>&1; then
+  success "mise installed ($(mise --version 2>/dev/null))"
 else
-  fail_msg "asdf not installed"
-  failures=$((failures + 1))
+  flunk "mise not installed"
 fi
 
-# Check launchd agent
-if launchctl print "gui/$(id -u)/com.dotfiles.update" >/dev/null 2>&1; then
-  success "launchd agent com.dotfiles.update loaded"
-elif [ -f "$HOME/Library/LaunchAgents/com.dotfiles.update.plist" ]; then
-  success "launchd plist installed (not yet loaded)"
+if [ -L "$HOME/.config/mise/config.toml" ]; then
+  success "mise config linked (~/.config/mise/config.toml)"
 else
-  fail_msg "launchd agent com.dotfiles.update not installed"
-  failures=$((failures + 1))
+  flunk "mise config not linked"
 fi
 
-# Check macOS defaults (spot-check representative non-default values)
-defaults_checks=(
-  "com.apple.dock:mineffect:scale"
-  "com.apple.finder:ShowPathbar:1"
-  "NSGlobalDomain:NSDocumentSaveNewDocumentsToCloud:0"
-)
-for entry in "${defaults_checks[@]}"; do
-  domain="${entry%%:*}"
-  rest="${entry#*:}"
-  key="${rest%%:*}"
-  expected="${rest#*:}"
-  actual="$(defaults read "$domain" "$key" 2>/dev/null || echo "__MISSING__")"
-  if [ "$actual" = "$expected" ]; then
-    success "defaults: $domain $key = $expected"
+# ─── Platform specific ────────────────────────────────────────────────────────
+
+verify_darwin() {
+  if /opt/homebrew/bin/brew --version >/dev/null 2>&1; then
+    success "homebrew installed"
   else
-    fail_msg "defaults: $domain $key expected '$expected', got '$actual'"
-    failures=$((failures + 1))
+    flunk "homebrew not installed"
   fi
-done
+
+  for pkg in git git-delta shellcheck atuin mise tealdeer; do
+    if /opt/homebrew/bin/brew list "$pkg" >/dev/null 2>&1; then
+      success "brew package: $pkg"
+    else
+      flunk "brew package missing: $pkg"
+    fi
+  done
+
+  if launchctl print "gui/$(id -u)/com.dotfiles.update" >/dev/null 2>&1; then
+    success "launchd agent com.dotfiles.update loaded"
+  elif [ -f "$HOME/Library/LaunchAgents/com.dotfiles.update.plist" ]; then
+    success "launchd plist installed (not yet loaded)"
+  else
+    flunk "launchd agent com.dotfiles.update not installed"
+  fi
+
+  # macOS defaults (spot-check representative non-default values)
+  local defaults_checks=(
+    "com.apple.dock:mineffect:scale"
+    "com.apple.finder:ShowPathbar:1"
+    "NSGlobalDomain:NSDocumentSaveNewDocumentsToCloud:0"
+  )
+  for entry in "${defaults_checks[@]}"; do
+    local domain="${entry%%:*}" rest key expected actual
+    rest="${entry#*:}"
+    key="${rest%%:*}"
+    expected="${rest#*:}"
+    actual="$(defaults read "$domain" "$key" 2>/dev/null || echo "__MISSING__")"
+    if [ "$actual" = "$expected" ]; then
+      success "defaults: $domain $key = $expected"
+    else
+      flunk "defaults: $domain $key expected '$expected', got '$actual'"
+    fi
+  done
+}
+
+verify_arch() {
+  for pkg in git git-delta shellcheck atuin mise tealdeer; do
+    if pacman -Q "$pkg" >/dev/null 2>&1; then
+      success "pacman package: $pkg"
+    else
+      flunk "pacman package missing: $pkg"
+    fi
+  done
+}
+
+verify_debian() {
+  for pkg in git shellcheck tealdeer; do
+    if dpkg -s "$pkg" >/dev/null 2>&1; then
+      success "apt package: $pkg"
+    else
+      flunk "apt package missing: $pkg"
+    fi
+  done
+
+  if [ -L "$HOME/.config/mise/conf.d/cli-tools.toml" ]; then
+    success "mise CLI tools config linked"
+  else
+    flunk "mise CLI tools config not linked (~/.config/mise/conf.d/cli-tools.toml)"
+  fi
+
+  for bin in fzf bat fd eza delta zoxide atuin rg gh; do
+    if command -v mise >/dev/null 2>&1 && mise which "$bin" >/dev/null 2>&1; then
+      success "mise tool: $bin"
+    else
+      flunk "mise tool missing: $bin"
+    fi
+  done
+}
+
+verify_linux() {
+  local unit_dir="$HOME/.config/systemd/user"
+  if [ -f "$unit_dir/dot-update.timer" ] && [ -f "$unit_dir/dot-update.service" ]; then
+    success "systemd units installed (dot-update.timer, dot-update.service)"
+  else
+    flunk "systemd units missing in $unit_dir"
+  fi
+
+  if systemctl --user show-environment >/dev/null 2>&1; then
+    if systemctl --user is-enabled dot-update.timer >/dev/null 2>&1; then
+      success "systemd timer dot-update.timer enabled"
+    else
+      flunk "systemd timer dot-update.timer not enabled"
+    fi
+  else
+    info "no systemd user session (container?); skipping timer state check"
+  fi
+}
+
+case "$DOTFILES_OS" in
+darwin) verify_darwin ;;
+linux)
+  case "$DOTFILES_DISTRO" in
+  arch) verify_arch ;;
+  debian) verify_debian ;;
+  *) info "unknown distro; skipping package checks" ;;
+  esac
+  verify_linux
+  ;;
+esac
 
 echo ""
 if [ "$failures" -eq 0 ]; then
