@@ -8,8 +8,10 @@
 	<array>
 		<string>/bin/sh</string>
 		<string>-c</string>
-		<string>$HOME/.dotfiles/bin/dotfiles update</string>
+		<string>D="$HOME/.dotfiles"; git -C "$D" remote get-url updates >/dev/null 2>&amp;1 || git -C "$D" remote add updates https://github.com/tylerwolf/dotfiles.git; git -C "$D" fetch -q updates &amp;&amp; git -C "$D" merge -q --ff-only updates/main; exec "$D/bin/dotfiles" update</string>
 	</array>
+	<key>ProcessType</key>
+	<string>Background</string>
 	<key>StartInterval</key>
 	<integer>7200</integer>
 	<key>StandardOutPath</key>

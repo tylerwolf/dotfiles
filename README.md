@@ -40,7 +40,7 @@ Everything after the clone is one command, on your `$PATH` once installed:
 | Command | What it does |
 |---------|-------------|
 | `dotfiles install` | Make this machine match the repo: symlink `*.symlink` files into `$HOME`, remove dangling links, install packages for your platform, run every topic `install.sh`, offer zsh as the login shell. Idempotent. |
-| `dotfiles update` | Pull the latest repo, then `install`, then upgrade mise-managed tools. This is what the auto-updater runs. |
+| `dotfiles update` | Fast-forward to `main`, then `install`, then upgrade mise-managed tools. This is what the auto-updater runs. |
 | `dotfiles verify` | Check that everything is in place for this platform. |
 | `dotfiles defaults` | Apply macOS system/Finder/Dock preferences (`macos/set-defaults.sh`). |
 | `dotfiles ssh-key` | Create an ed25519 key for this machine if needed and register it with GitHub via `gh`. |
@@ -134,7 +134,7 @@ When adding a tool, add it to all of them.
 
 ## Keeping Up to Date
 
-`dotfiles update` pulls the latest changes, updates submodules, re-runs all installers, and upgrades mise-managed tools.
+`dotfiles update` fast-forwards to `main`, re-runs all installers, and upgrades mise-managed tools. The launchd agent and systemd service pull *before* starting the script, so a broken `bin/dotfiles` on `main` can still be fixed by the next push. Offline, the update skips the network-only steps and re-applies the current checkout; one failing installer doesn't stop the others. Manual and scheduled runs can't overlap (a lock in `$TMPDIR`).
 It runs every 2 hours from a launchd agent on macOS or a systemd user timer (`dotfiles-update.timer`) on Linux, both installed by the `autoupdate/` topic.
 On a headless Linux box the installer enables lingering so the timer runs without a login session.
 Logs: `~/Library/Logs/dotfiles-update.log` on macOS, `journalctl --user -u dotfiles-update` on Linux.

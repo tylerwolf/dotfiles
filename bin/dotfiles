@@ -37,6 +37,26 @@ tool_path() {
   command -v mise >/dev/null 2>&1 && mise which "$1" 2>/dev/null
 }
 
+# ─── lock ─────────────────────────────────────────────────────────────────────
+
+# One install/update at a time (a manual run can overlap the scheduled one).
+# mkdir is atomic and portable (macOS has no flock). A lock older than two
+# hours is assumed stale.
+acquire_lock() {
+  local lock
+  lock="${TMPDIR:-/tmp}/dotfiles-$(id -u).lock"
+  if ! mkdir "$lock" 2>/dev/null; then
+    if [ -n "$(find "$lock" -maxdepth 0 -mmin +120 2>/dev/null)" ]; then
+      rm -rf "$lock"
+      mkdir "$lock" 2>/dev/null || die "cannot create lock $lock"
+    else
+      die "another dotfiles install/update is running (lock: $lock)"
+    fi
+  fi
+  # shellcheck disable=SC2064
+  trap "rm -rf '$lock'" EXIT
+}
+
 # ─── install ──────────────────────────────────────────────────────────────────
 
 link_file() {
@@ -155,7 +175,8 @@ setup_shell() {
   fi
 }
 
-cmd_install() {
+# Returns non-zero if any installer failed (all of them still run).
+do_install() {
   echo ""
   link_dotfiles
   clean_dotfiles
@@ -165,34 +186,66 @@ cmd_install() {
   echo ""
   if [ "$failed" -eq 0 ]; then
     success "install complete"
-  else
-    die "$failed installer(s) failed"
+    return 0
   fi
+  fail_msg "$failed installer(s) failed"
+  return 1
+}
+
+cmd_install() {
+  acquire_lock
+  do_install || exit 1
 }
 
 # ─── update ───────────────────────────────────────────────────────────────────
 
 cmd_update() {
   cd "$DOTFILES_ROOT" || die "cannot cd to $DOTFILES_ROOT"
+  acquire_lock
 
   # ssh is unavailable under launchd/systemd; pull over https
-  git remote add updates "https://github.com/$GITHUB_REPO.git" 2>/dev/null
+  git remote get-url updates >/dev/null 2>&1 ||
+    git remote add updates "https://github.com/$GITHUB_REPO.git"
 
-  echo "› git update"
-  git pull --rebase --stat updates "$(git rev-parse --abbrev-ref HEAD)" ||
-    fail_msg "git pull failed; installing from the current checkout"
-
-  echo "› submodules update"
-  git submodule update --init --recursive --remote --merge --quiet
-
-  cmd_install
-
-  if command -v mise >/dev/null 2>&1; then
-    echo "› mise upgrade"
-    MISE_YES=1 mise upgrade
+  # recover from a rebase/merge interrupted by sleep or shutdown
+  if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
+    git rebase --abort >/dev/null 2>&1 || true
+    fail_msg "aborted an interrupted rebase"
+  fi
+  if [ -f .git/MERGE_HEAD ]; then
+    git merge --abort >/dev/null 2>&1 || true
+    fail_msg "aborted an interrupted merge"
   fi
 
-  git config --global dotfiles.lastupdate "$(date +%Y%m%d%H%M)"
+  echo "› git update"
+  local offline=false
+  if git fetch -q updates; then
+    if git merge -q --ff-only updates/main; then
+      success "at $(git rev-parse --short HEAD)"
+    else
+      fail_msg "cannot fast-forward to updates/main (local commits or a dirty tree?); installing from the current checkout"
+    fi
+  else
+    offline=true
+    fail_msg "git fetch failed (offline?); installing from the current checkout"
+  fi
+  # installers skip their network-only steps (brew update, antidote pull) when offline
+  if [ "$offline" = true ]; then
+    export DOTFILES_OFFLINE=1
+  fi
+
+  local failed=0
+  do_install || failed=1
+
+  if command -v mise >/dev/null 2>&1 && [ "$offline" = false ]; then
+    echo "› mise upgrade"
+    MISE_YES=1 mise upgrade || failed=1
+  fi
+
+  if [ "$failed" -eq 0 ]; then
+    git config --global dotfiles.lastupdate "$(date +%Y%m%d%H%M)"
+  fi
+  exit "$failed"
 }
 
 # ─── verify ───────────────────────────────────────────────────────────────────
@@ -254,6 +307,14 @@ verify_common() {
     success "ghostty config linked (~/.config/ghostty/config)"
   else
     flunk "ghostty config not linked"
+  fi
+
+  local last
+  last="$(git config --global --get dotfiles.lastupdate 2>/dev/null || true)"
+  if [ -n "$last" ]; then
+    info "last successful update: ${last:0:4}-${last:4:2}-${last:6:2} ${last:8:2}:${last:10:2}"
+  else
+    info "no successful 'dotfiles update' recorded yet"
   fi
 
   # The shell actually starts, and the history tools are wired up: atuin loaded

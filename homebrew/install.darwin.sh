@@ -16,6 +16,11 @@ if ! command -v brew >/dev/null 2>&1; then
 	eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
+if [ -n "${DOTFILES_OFFLINE:-}" ]; then
+	echo "  offline; skipping brew update/bundle"
+	exit 0
+fi
+
 brew update
 brew bundle --global
 brew cleanup || true

@@ -13,7 +13,7 @@ Three layers, each with one job:
 - `script/bootstrap` — From nothing: install git (and Command Line Tools on macOS), clone to `~/.dotfiles`, run `dotfiles install`, offer `dotfiles ssh-key`. This is the one-liner in the README; re-runnable on an existing clone. Env: `DOTFILES_DIR`, `DOTFILES_REPO`, `DOTFILES_BRANCH`.
 - `bin/dotfiles` — The user command (on `$PATH` via `$DOTFILES/bin`):
   - `dotfiles install` — Symlinks, dangling-link cleanup, package topics first, then all topic installers, then offer zsh as login shell. Idempotent.
-  - `dotfiles update` — Pull (https `updates` remote), submodules, `install`, `mise upgrade`. Run by launchd / systemd.
+  - `dotfiles update` — Fetch the https `updates` remote and fast-forward to `updates/main` (aborting any interrupted rebase/merge), `install`, `mise upgrade`; records `dotfiles.lastupdate` only on full success. Run by launchd / systemd, whose command lines pull *before* exec'ing the script so a broken script on main is self-healing. Sets `DOTFILES_OFFLINE=1` when the fetch fails so network-only installer steps (brew update, antidote pull) are skipped. A `mkdir` lock in `$TMPDIR` prevents overlapping runs.
   - `dotfiles verify` — Platform-aware checks.
   - `dotfiles defaults` — `macos/set-defaults.sh`.
   - `dotfiles ssh-key` — Generate `~/.ssh/id_ed25519` if missing, register with GitHub via `gh`, switch `origin` to ssh.
@@ -84,7 +84,7 @@ GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty
 
 - macOS: `script/test-macos` (Tart VMs) overlays the working tree into `~/.dotfiles`, runs `script/bootstrap`, `macos/set-defaults.sh`, `dotfiles verify` over SSH
 - Linux: `script/test-linux` builds `script/docker/{arch,ubuntu}.Dockerfile` (x86-64, Rosetta on Apple Silicon), overlays the working tree into `~/.dotfiles`, runs `script/bootstrap` + `dotfiles verify` + `zsh -ic`. Containers lack systemd, so timer state is only checked on the Ubuntu CI runner.
-- CI (`.github/workflows/ci.yml`): lint, bootstrap-macos, bootstrap-arch (CachyOS container), bootstrap-ubuntu (native 24.04 runner). Dependabot (`.github/dependabot.yml`) bumps action tags and the Docker base images monthly; tool versions are mise's job.
+- CI (`.github/workflows/ci.yml`): lint, bootstrap-macos, bootstrap-arch (CachyOS container), bootstrap-ubuntu (native 24.04 runner); each bootstrap job also re-runs `dotfiles install` (must create no `.backup` files) and runs `dotfiles update` against the checkout. `script/test-linux` does the same. Dependabot (`.github/dependabot.yml`) bumps action tags and the Docker base images monthly; tool versions are mise's job.
 
 ### Repository Assets
 

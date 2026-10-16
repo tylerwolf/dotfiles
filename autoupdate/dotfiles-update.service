@@ -1,8 +1,9 @@
 [Unit]
 Description=Update dotfiles (git pull + run topic installers)
-After=network-online.target
-Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=%h/.dotfiles/bin/dotfiles update
+# Pull before running the script so a broken bin/dotfiles on main can still be
+# fixed by the next push (the pull happens even if the script won't start).
+ExecStart=/bin/sh -c 'git -C %h/.dotfiles remote get-url updates >/dev/null 2>&1 || git -C %h/.dotfiles remote add updates https://github.com/tylerwolf/dotfiles.git; git -C %h/.dotfiles fetch -q updates && git -C %h/.dotfiles merge -q --ff-only updates/main; exec %h/.dotfiles/bin/dotfiles update'
+TimeoutStartSec=30min

@@ -39,6 +39,18 @@ jobs:
       - name: Run verification
         run: ./bin/dotfiles verify
 
+      - name: Second install is a no-op
+        run: |
+          ./bin/dotfiles install
+          if find "$HOME" -maxdepth 1 -name '*.backup' | grep .; then
+            echo "second install created backups"; exit 1
+          fi
+
+      - name: dotfiles update works against this checkout
+        run: |
+          git -C "$HOME/.dotfiles" remote add updates "$GITHUB_WORKSPACE"
+          ./bin/dotfiles update
+
   bootstrap-arch:
     runs-on: ubuntu-latest
     container: cachyos/cachyos:latest
@@ -64,6 +76,18 @@ jobs:
       - name: Run verification
         run: ./bin/dotfiles verify
 
+      - name: Second install is a no-op
+        run: |
+          ./bin/dotfiles install
+          if find "$HOME" -maxdepth 1 -name '*.backup' | grep .; then
+            echo "second install created backups"; exit 1
+          fi
+
+      - name: dotfiles update works against this checkout
+        run: |
+          git -C "$HOME/.dotfiles" remote add updates "$GITHUB_WORKSPACE"
+          ./bin/dotfiles update
+
       - name: Start zsh
         run: zsh -ic 'echo "zsh started OK"'
 
@@ -86,6 +110,18 @@ jobs:
 
       - name: Run verification
         run: ./bin/dotfiles verify
+
+      - name: Second install is a no-op
+        run: |
+          ./bin/dotfiles install
+          if find "$HOME" -maxdepth 1 -name '*.backup' | grep .; then
+            echo "second install created backups"; exit 1
+          fi
+
+      - name: dotfiles update works against this checkout
+        run: |
+          git -C "$HOME/.dotfiles" remote add updates "$GITHUB_WORKSPACE"
+          ./bin/dotfiles update
 
       - name: Start zsh
         run: zsh -ic 'echo "zsh started OK"'

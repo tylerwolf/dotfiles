@@ -62,6 +62,12 @@ cd ~/.dotfiles
 ./script/bootstrap
 ./bin/dotfiles verify
 zsh -ic 'echo "zsh started OK"'
+echo "=== second install must be a no-op ==="
+./bin/dotfiles install
+if find "$HOME" -maxdepth 1 -name '*.backup' | grep .; then echo "second install created backups"; exit 1; fi
+echo "=== dotfiles update against the mounted repo ==="
+git -C ~/.dotfiles remote add updates /src
+./bin/dotfiles update
 INNER
 
 run=(docker run --rm --platform "$PLATFORM" -v "$DOTFILES_ROOT:/src:ro" "$image")
