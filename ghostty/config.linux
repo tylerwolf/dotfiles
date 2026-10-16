@@ -1,0 +1,5 @@
+# Linux-only Ghostty settings, included from config via `config-file = ?config.linux`.
+
+# CachyOS ships a system-wide Ghostty config that forces `command = fish`.
+# Use the login shell set up by `dotfiles install` instead.
+command = /usr/bin/zsh

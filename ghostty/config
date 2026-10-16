@@ -3,6 +3,10 @@
 # Reference: https://ghostty.org/docs/config/reference
 # Check with: ghostty +validate-config    List themes: ghostty +list-themes
 
+# Linux-only settings live in config.linux (linked by ghostty/install.linux.sh);
+# the leading ? makes the include optional, so macOS ignores it.
+config-file = ?config.linux
+
 # Look (always dark; bat and delta use the matching Solarized (dark) theme)
 theme = iTerm2 Solarized Dark
 font-size = 14

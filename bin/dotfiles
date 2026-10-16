@@ -365,6 +365,12 @@ verify_debian() {
 }
 
 verify_linux() {
+  if [ -L "$HOME/.config/ghostty/config.linux" ]; then
+    success "ghostty linux config linked (~/.config/ghostty/config.linux)"
+  else
+    flunk "ghostty linux config not linked"
+  fi
+
   local unit_dir="$HOME/.config/systemd/user"
   if [ -f "$unit_dir/dotfiles-update.timer" ] && [ -f "$unit_dir/dotfiles-update.service" ]; then
     success "systemd units installed (dotfiles-update.timer, dotfiles-update.service)"

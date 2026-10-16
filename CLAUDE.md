@@ -62,7 +62,7 @@ One list per package manager; keep them in sync (headers cross-reference each ot
 
 `mise/global.toml` holds global runtime versions (node); it replaced asdf and direnv. Antidote is git-cloned to `~/.antidote` on every platform.
 
-GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty`); `ghostty/config` is one shared file linked to `~/.config/ghostty/config`. Topics that manage files under `~/.config` link them from their `install.sh` using `link_config` from `script/link.sh` (the `*.symlink` convention only covers `~/.name`).
+GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty`); `ghostty/config` is one shared file linked to `~/.config/ghostty/config`, with Linux-only settings in `ghostty/config.linux` (optional include, linked by `ghostty/install.linux.sh`; CachyOS's system config forces fish, this restores zsh). Topics that manage files under `~/.config` link them from their `install.sh` using `link_config` from `script/link.sh` (the `*.symlink` convention only covers `~/.name`).
 
 ### Auto-Update
 
