@@ -1,4 +1,7 @@
 # Global mise config — linked to ~/.config/mise/config.toml by mise/install.sh.
+# (Named global.toml on purpose: mise treats any <dir>/mise/config.toml as a
+# project config, which made the dotfiles checkout itself look like an
+# untrusted mise project.)
 # Runtime versions live here (was ~/.tool-versions under asdf). Per-project
 # .tool-versions / mise.toml files still override these.
 

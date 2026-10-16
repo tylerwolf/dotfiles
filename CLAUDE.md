@@ -60,7 +60,7 @@ One list per package manager; keep them in sync (headers cross-reference each ot
 - `apt/packages.txt` — Debian/Ubuntu base packages
 - `mise/cli-tools.debian.toml` — modern CLI tools on Debian/Ubuntu (apt ships them stale/missing), installed by mise under canonical binary names
 
-`mise/config.toml` holds global runtime versions (node); it replaced asdf and direnv. Antidote is git-cloned to `~/.antidote` on every platform.
+`mise/global.toml` holds global runtime versions (node); it replaced asdf and direnv. Antidote is git-cloned to `~/.antidote` on every platform.
 
 GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty`); `ghostty/config` is one shared file linked to `~/.config/ghostty/config`. Topics that manage files under `~/.config` link them from their `install.sh` using `link_config` from `script/link.sh` (the `*.symlink` convention only covers `~/.name`).
 

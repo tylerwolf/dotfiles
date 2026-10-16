@@ -21,6 +21,6 @@ mkdir -p "$HOME/.config/mise/conf.d"
 
 # shellcheck source=script/link.sh
 . "$DOTFILES_ROOT/script/link.sh"
-link_config "$DOTFILES_ROOT/mise/config.toml" "$HOME/.config/mise/config.toml"
+link_config "$DOTFILES_ROOT/mise/global.toml" "$HOME/.config/mise/config.toml"
 
 MISE_YES=1 mise install
