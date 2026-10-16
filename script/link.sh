@@ -1,6 +1,6 @@
 #!/bin/sh
 # link_config SRC DST — symlink a config file, backing up anything already there.
-# Sourced by mise/install.sh and mise/install.debian.sh (not an installer itself).
+# Sourced by topic installers that manage files under ~/.config (not an installer itself).
 link_config() {
 	if [ -e "$2" ] || [ -L "$2" ]; then
 		if [ "$(readlink "$2")" = "$1" ]; then

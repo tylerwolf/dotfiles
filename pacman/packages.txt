@@ -27,3 +27,6 @@ tealdeer        # tldr
 cowsay
 vim
 wl-clipboard    # pbcopy/pbpaste shim on Wayland
+
+# Apps
+ghostty         # terminal (same config on macOS and Linux, see ghostty/)

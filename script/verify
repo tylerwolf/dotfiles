@@ -73,6 +73,30 @@ else
   flunk "mise config not linked"
 fi
 
+if [ -L "$HOME/.config/ghostty/config" ]; then
+  success "ghostty config linked (~/.config/ghostty/config)"
+else
+  flunk "ghostty config not linked"
+fi
+
+# Validate the ghostty config wherever the binary exists (macOS app bundle or Linux package)
+verify_ghostty_config() {
+  local bin=""
+  if command -v ghostty >/dev/null 2>&1; then
+    bin="ghostty"
+  elif [ -x /Applications/Ghostty.app/Contents/MacOS/ghostty ]; then
+    bin=/Applications/Ghostty.app/Contents/MacOS/ghostty
+  else
+    info "ghostty binary not found; skipping config validation"
+    return 0
+  fi
+  if "$bin" +validate-config >/dev/null 2>&1; then
+    success "ghostty config validates"
+  else
+    flunk "ghostty config invalid: $("$bin" +validate-config 2>&1 | head -3)"
+  fi
+}
+
 # ─── Platform specific ────────────────────────────────────────────────────────
 
 verify_darwin() {
@@ -89,6 +113,13 @@ verify_darwin() {
       flunk "brew package missing: $pkg"
     fi
   done
+
+  if /opt/homebrew/bin/brew list --cask ghostty >/dev/null 2>&1; then
+    success "brew cask: ghostty"
+  else
+    flunk "brew cask missing: ghostty"
+  fi
+  verify_ghostty_config
 
   if launchctl print "gui/$(id -u)/com.dotfiles.update" >/dev/null 2>&1; then
     success "launchd agent com.dotfiles.update loaded"
@@ -119,13 +150,14 @@ verify_darwin() {
 }
 
 verify_arch() {
-  for pkg in git git-delta shellcheck atuin mise tealdeer; do
+  for pkg in git git-delta shellcheck atuin mise tealdeer ghostty; do
     if pacman -Q "$pkg" >/dev/null 2>&1; then
       success "pacman package: $pkg"
     else
       flunk "pacman package missing: $pkg"
     fi
   done
+  verify_ghostty_config
 }
 
 verify_debian() {

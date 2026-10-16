@@ -27,7 +27,7 @@ if has_delta; then
 	git config --global interactive.diffFilter "delta --color-only"
 	git config --global delta.navigate true
 	git config --global delta.line-numbers true
-	git config --global delta.syntax-theme "Dracula"
+	git config --global delta.syntax-theme "Solarized (dark)"
 	git config --global merge.conflictstyle diff3
 	git config --global diff.colorMoved default
 fi

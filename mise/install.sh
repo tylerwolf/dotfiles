@@ -17,8 +17,8 @@ fi
 
 mkdir -p "$HOME/.config/mise/conf.d"
 
-# shellcheck source=mise/link.sh
-. "$DOTFILES_ROOT/mise/link.sh"
+# shellcheck source=script/link.sh
+. "$DOTFILES_ROOT/script/link.sh"
 link_config "$DOTFILES_ROOT/mise/config.toml" "$HOME/.config/mise/config.toml"
 
 MISE_YES=1 mise install

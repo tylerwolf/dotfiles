@@ -61,8 +61,10 @@ Files tagged with a platform name are only used there:
 | `antidote/` | Zsh plugin manager (git-cloned to `~/.antidote` on every platform) |
 | `apt/` | Debian/Ubuntu base package list and installer |
 | `atuin/` | Synced, searchable shell history |
+| `bat/` | bat theme (Solarized Dark, matching Ghostty and delta) |
 | `autoupdate/` | launchd agent (macOS) or systemd user timer (Linux) that pulls & re-runs installers every 2 hours |
 | `fzf/` | Fuzzy finder integration and key bindings |
+| `ghostty/` | Ghostty terminal config, shared by macOS and Linux (installed via cask / pacman) |
 | `git/` | Git config, aliases, and global ignore |
 | `homebrew/` | macOS Brewfile and installer |
 | `macos/` | macOS system/Finder/Dock preferences |
@@ -73,6 +75,10 @@ Files tagged with a platform name are only used there:
 | `xcode/` | iOS Simulator alias (macOS only) |
 | `zoxide/` | Smarter `cd` with directory frecency |
 | `zsh/` | Zsh config, prompt, and plugin loading |
+
+### Terminal
+
+[Ghostty](https://ghostty.org) is installed on macOS (cask) and Arch (pacman) with one shared config in `ghostty/config`, linked to `~/.config/ghostty/config`. Its shell integration installs Ghostty's terminfo on hosts you `ssh` into, so `TERM` works on the headless Ubuntu box too.
 
 ### Modern CLI Replacements
 
@@ -105,6 +111,7 @@ Everything is organized into **topic directories** (e.g., `git/`, `fzf/`, `zsh/`
 
 **`bin/`** is added to `$PATH` — anything in there is available everywhere.
 
+GUI apps are the Brewfile's `cask` entries on macOS and plain packages on Arch (none on the headless Ubuntu box).
 Package lists are kept per platform and cross-referenced in their headers:
 `homebrew/Brewfile.darwin.symlink`, `pacman/packages.txt` (+ `aur.txt`), `apt/packages.txt`, and `mise/cli-tools.debian.toml`.
 When adding a tool, add it to all of them.

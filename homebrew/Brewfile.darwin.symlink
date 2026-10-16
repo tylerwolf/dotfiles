@@ -30,3 +30,6 @@ brew 'jq'           # JSON processor
 brew 'btop'         # system monitor
 brew 'tealdeer'     # tldr client (the `tldr` formula was disabled upstream)
 brew 'cowsay'
+
+# Apps
+cask 'ghostty'      # terminal (same config on macOS and Linux, see ghostty/)

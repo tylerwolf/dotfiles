@@ -1,0 +1,47 @@
+# Ghostty terminal — linked to ~/.config/ghostty/config by ghostty/install.sh.
+# Same file on macOS and Linux; platform-specific keys are ignored elsewhere.
+# Reference: https://ghostty.org/docs/config/reference
+# Check with: ghostty +validate-config    List themes: ghostty +list-themes
+
+# Look (always dark; bat and delta use the matching Solarized (dark) theme)
+theme = iTerm2 Solarized Dark
+font-size = 14
+window-padding-x = 8
+window-padding-y = 8
+window-padding-balance = true
+# Solarized is designed around bold text keeping its normal color
+bold-is-bright = false
+
+# Cursor: steady block, and don't let the shell integration override it at the prompt
+cursor-style = block
+cursor-style-blink = false
+
+# Behaviour
+# Selecting text copies it to the system clipboard (like iTerm2 "copy on select")
+copy-on-select = clipboard
+# Warn before pasting multi-line text so pasted commands don't run early
+clipboard-paste-protection = true
+mouse-hide-while-typing = true
+# 100 MB of scrollback (default is 10 MB); value is in bytes
+scrollback-limit = 100000000
+# Don't ask before closing a window with a running shell (iTerm2 PromptOnQuit=false equivalent)
+confirm-close-surface = false
+
+# macOS
+# Use Option as Alt so the ⌥← / ⌥→ word-jump bindings in zsh/config.zsh work
+macos-option-as-alt = true
+# Tabs live in the title bar
+macos-titlebar-style = tabs
+# Restore windows and tabs on relaunch
+window-save-state = always
+# iTerm2-style hotkey drop-down terminal
+keybind = global:cmd+grave_accent=toggle_quick_terminal
+
+# Linux (GTK)
+# Launching Ghostty again opens a window in the running instance
+gtk-single-instance = true
+
+# zsh integration: prompt jumping, sudo passthrough, window titles, and SSH helpers
+# (ssh-terminfo installs Ghostty's terminfo on remote hosts so TERM works over ssh)
+shell-integration = zsh
+shell-integration-features = no-cursor,sudo,title,ssh-env,ssh-terminfo
