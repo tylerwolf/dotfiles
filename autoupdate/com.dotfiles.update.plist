@@ -8,7 +8,7 @@
 	<array>
 		<string>/bin/sh</string>
 		<string>-c</string>
-		<string>$HOME/.dotfiles/bin/dot_update</string>
+		<string>$HOME/.dotfiles/bin/dotfiles update</string>
 	</array>
 	<key>StartInterval</key>
 	<integer>7200</integer>

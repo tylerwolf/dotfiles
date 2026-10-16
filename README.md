@@ -18,18 +18,34 @@
 
 ## Install
 
+On a new machine, run the one-liner:
+
 ```console
-git clone https://github.com/tylerwolf/dotfiles.git ~/.dotfiles
-cd ~/.dotfiles
-./script/bootstrap
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/tylerwolf/dotfiles/main/script/bootstrap)"
 ```
 
-Bootstrap will:
-1. Set up your git author name/email (interactive, first run only)
-2. Symlink all `*.symlink` files into `$HOME` (existing files backed up with `.backup` suffix)
-3. Install packages for your platform (see below)
-4. On Linux, offer to make zsh your login shell
-5. Run all topic `install.sh` scripts (antidote, mise, git config, auto-update)
+`script/bootstrap` installs the bare prerequisites (git, and the Command Line Tools on macOS), clones this repo to `~/.dotfiles`, runs `dotfiles install`, and offers to create and register an SSH key for the machine with GitHub. Re-running it on an existing clone is safe.
+
+Or by hand:
+
+```console
+git clone https://github.com/tylerwolf/dotfiles.git ~/.dotfiles
+~/.dotfiles/bin/dotfiles install
+```
+
+### The `dotfiles` command
+
+Everything after the clone is one command, on your `$PATH` once installed:
+
+| Command | What it does |
+|---------|-------------|
+| `dotfiles install` | Make this machine match the repo: symlink `*.symlink` files into `$HOME`, remove dangling links, install packages for your platform, run every topic `install.sh`, offer zsh as the login shell. Idempotent. |
+| `dotfiles update` | Pull the latest repo, then `install`, then upgrade mise-managed tools. This is what the auto-updater runs. |
+| `dotfiles verify` | Check that everything is in place for this platform. |
+| `dotfiles defaults` | Apply macOS system/Finder/Dock preferences (`macos/set-defaults.sh`). |
+| `dotfiles ssh-key` | Create an ed25519 key for this machine if needed and register it with GitHub via `gh`. |
+
+On first run the git topic asks for your name and email (interactive only). Existing files are backed up with a `.backup` suffix when symlinks are created.
 
 ## Platforms
 
@@ -106,8 +122,8 @@ Everything is organized into **topic directories** (e.g., `git/`, `fzf/`, `zsh/`
 | `path.zsh` | First | `$PATH` modifications |
 | `*.zsh` | Second | Config, aliases, functions |
 | `completion.zsh` | Last | Shell completions |
-| `install.sh` | On bootstrap/update | One-time setup for the topic (package-manager topics run first) |
-| `*.symlink` | On bootstrap | Symlinked to `$HOME/.filename` |
+| `install.sh` | `dotfiles install` | Setup for the topic (package-manager topics run first) |
+| `*.symlink` | `dotfiles install` | Symlinked to `$HOME/.filename` |
 
 **`bin/`** is added to `$PATH` — anything in there is available everywhere.
 
@@ -118,16 +134,16 @@ When adding a tool, add it to all of them.
 
 ## Keeping Up to Date
 
-`bin/dot_update` pulls the latest changes, updates submodules, re-runs all installers, and upgrades mise-managed tools.
+`dotfiles update` pulls the latest changes, updates submodules, re-runs all installers, and upgrades mise-managed tools.
 It runs every 2 hours from a launchd agent on macOS or a systemd user timer (`dot-update.timer`) on Linux, both installed by the `autoupdate/` topic.
 On a headless Linux box the installer enables lingering so the timer runs without a login session.
-Package installs that need a sudo password are skipped when there is no terminal; run `dot_update` interactively to pick them up.
+Package installs that need a sudo password are skipped when there is no terminal; run `dotfiles update` interactively to pick them up.
 
 ## Local Customization
 
 These files are not checked in and won't be overwritten:
 
-- **`~/.localrc`** — sourced at end of zshrc and by `dot_update` (keep it POSIX sh compatible)
+- **`~/.localrc`** — sourced at end of zshrc and by `dotfiles update` (keep it POSIX sh compatible)
 - **`~/.gitconfig.local`** — included by gitconfig for machine-specific git settings
 - **`~/.config/mise/config.local.toml`** — machine-specific mise tools
 
@@ -136,20 +152,20 @@ These files are not checked in and won't be overwritten:
 Optionally apply preferred macOS system/Finder/Dock settings:
 
 ```console
-./macos/set-defaults.sh
+dotfiles defaults
 ```
 
-Requires a logout or restart to take full effect. The script is a no-op on Linux.
+Requires a logout or restart to take full effect. It is a no-op on Linux.
 
 ## Testing & CI
 
 A GitHub Actions CI pipeline runs on every push: shellcheck linting, then a full bootstrap + verification on a macOS runner, in a CachyOS container, and on an Ubuntu 24.04 runner.
 
-Locally, you can verify a bootstrapped machine, or test a fresh bootstrap in a sandbox:
+Locally, you can verify an installed machine, or run `script/bootstrap` end to end in a sandbox:
 
 ```console
 make lint          # shellcheck all shell scripts
-make verify        # run post-bootstrap verification checks for this platform
+make verify        # dotfiles verify for this platform
 
 # macOS (Tart VMs, Apple Silicon)
 make macos-setup      # one-time: install Tart, pull macOS Tahoe base image

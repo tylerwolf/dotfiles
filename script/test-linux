@@ -60,7 +60,7 @@ git config --global user.email 'test@dotfiles.local'
 git config --global dotfiles.managed true
 cd ~/.dotfiles
 ./script/bootstrap
-./script/verify
+./bin/dotfiles verify
 zsh -ic 'echo "zsh started OK"'
 INNER
 

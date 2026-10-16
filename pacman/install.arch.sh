@@ -3,6 +3,8 @@
 # Arch-family packages (CachyOS): official repos via pacman, AUR via yay/paru.
 # Other platforms: homebrew/install.darwin.sh, apt/install.debian.sh.
 
+set -e
+
 # shellcheck source=script/os.sh
 . "$(dirname "$0")/../script/os.sh"
 
@@ -16,7 +18,7 @@ packages() {
 # Under the systemd timer there is no tty, so a sudo password prompt would hang.
 if ! sudo -n true 2>/dev/null && [ ! -t 0 ]; then
 	echo "  sudo needs a password and there is no terminal; skipping package sync"
-	echo "  (run dot_update interactively to install new packages)"
+	echo "  (run 'dotfiles update' interactively to install new packages)"
 	exit 0
 fi
 

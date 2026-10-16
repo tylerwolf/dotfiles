@@ -1,5 +1,5 @@
 #!/bin/sh
-# Sets up a launchd agent to run dot_update every 2 hours.
+# Sets up a launchd agent to run `dotfiles update` every 2 hours.
 
 PLIST_NAME="com.dotfiles.update"
 PLIST_SRC="$HOME/.dotfiles/autoupdate/${PLIST_NAME}.plist"

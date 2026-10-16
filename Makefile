@@ -8,7 +8,7 @@ lint:
 	shellcheck $(SHELL_FILES) $(BIN_SCRIPTS)
 
 verify:
-	./script/verify
+	./bin/dotfiles verify
 
 # macOS (Tart VMs)
 macos-setup:

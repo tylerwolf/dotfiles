@@ -1,5 +1,5 @@
 #!/bin/sh
-# Sets up a systemd user timer to run dot_update every 2 hours
+# Sets up a systemd user timer to run `dotfiles update` every 2 hours
 # (the Linux counterpart of the launchd agent in install.darwin.sh).
 
 # shellcheck source=script/os.sh

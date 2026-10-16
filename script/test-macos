@@ -232,7 +232,7 @@ cmd_test() {
   run_set_defaults
 
   info "running verification checks"
-  ssh_cmd "$VM_IP" "cd ~/.dotfiles && ./script/verify" || fail "verification failed"
+  ssh_cmd "$VM_IP" "cd ~/.dotfiles && ./bin/dotfiles verify" || fail "verification failed"
 }
 
 cmd_shell() {

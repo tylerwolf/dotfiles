@@ -8,25 +8,34 @@ A topic-based dotfiles repository for macOS and Linux (Arch/CachyOS and Debian/U
 
 ## Key Commands
 
-- `./script/bootstrap` — Full initial setup (git config, symlinks, platform packages, installers)
-- `./script/install` — Run all `install.sh` / `install.<tag>.sh` scripts found in topic directories
-- `./bin/dot_update` — Pull latest, update submodules, re-run all installers, upgrade mise tools
+Three layers, each with one job:
+
+- `script/bootstrap` — From nothing: install git (and Command Line Tools on macOS), clone to `~/.dotfiles`, run `dotfiles install`, offer `dotfiles ssh-key`. This is the one-liner in the README; re-runnable on an existing clone. Env: `DOTFILES_DIR`, `DOTFILES_REPO`, `DOTFILES_BRANCH`.
+- `bin/dotfiles` — The user command (on `$PATH` via `$DOTFILES/bin`):
+  - `dotfiles install` — Symlinks, dangling-link cleanup, package topics first, then all topic installers, then offer zsh as login shell. Idempotent.
+  - `dotfiles update` — Pull (https `updates` remote), submodules, `install`, `mise upgrade`. Run by launchd / systemd.
+  - `dotfiles verify` — Platform-aware checks.
+  - `dotfiles defaults` — `macos/set-defaults.sh`.
+  - `dotfiles ssh-key` — Generate `~/.ssh/id_ed25519` if missing, register with GitHub via `gh`, switch `origin` to ssh.
+- `topic/install.sh` — Per-topic setup, run by `dotfiles install`.
+
+`bin/dot_update` is a temporary shim (`dotfiles update`) for launchd agents installed before the rename; delete once no machine's plist references it.
 
 - `make lint` — Run shellcheck on all shell scripts (`.sh` files, `script/*`, `bin/*`)
-- `make verify` — Run post-bootstrap verification checks for the current platform
+- `make verify` — `dotfiles verify`
 - `make macos-setup` — One-time: install Tart, pull macOS Tahoe base image
-- `make macos-test` — Automated: clone fresh macOS VM, run bootstrap, verify results, cleanup
+- `make macos-test` — Automated: clone fresh macOS VM, run `script/bootstrap`, verify, cleanup
 - `make macos-shell` — Interactive: clone fresh macOS VM, print SSH command for manual exploration
 - `make macos-ready` — Pre-bootstrapped: clone fresh macOS VM, run bootstrap + defaults, print SSH command
 - `make macos-cleanup` — Stop and delete all leftover `dotfiles-test-*` VMs
-- `make linux-test` — Automated: bootstrap + verify in CachyOS and Ubuntu 24.04 Docker containers (`make arch-test`, `make ubuntu-test` individually)
+- `make linux-test` — Automated: `script/bootstrap` + verify in CachyOS and Ubuntu 24.04 Docker containers (`make arch-test`, `make ubuntu-test` individually)
 - `make arch-shell` / `make ubuntu-shell` — Interactive: bootstrap a container, open zsh
 
 ## Architecture
 
 ### Platform Detection
 
-`script/os.sh` is sourced by bootstrap, install, dot_update, verify and every installer. It exports:
+`script/os.sh` is sourced by `bin/dotfiles` and every topic installer (`script/bootstrap` inlines the same checks since it runs before the clone exists). It exports:
 
 - `DOTFILES_OS` — `darwin` | `linux`
 - `DOTFILES_DISTRO` — `arch` | `debian` | empty
@@ -41,8 +50,8 @@ The zsh loader (`zsh/zshrc.symlink`) auto-discovers files by naming convention a
 1. **`path.zsh`** (and `path.<tag>.zsh`) — Loaded first. Use for `$PATH` modifications.
 2. **`*.zsh`** (except path/completion) — Loaded second. Config, aliases, etc.
 3. **`completion.zsh`** — Loaded last. Shell completions.
-4. **`install.sh`** / **`install.<tag>.sh`** — Per-topic installer, run by `script/install` and `dot_update`. Package-manager topics (`homebrew`, `pacman`, `apt`, `mise`) run before the rest. Discovery uses `git ls-tree`, so new installers must be committed (or overlaid, as the test scripts do).
-5. **`*.symlink`** / **`*.<tag>.symlink`** — Symlinked to `$HOME/.filename` (stripping `.symlink` and the tag) by `script/bootstrap`. Dangling links into the repo are removed.
+4. **`install.sh`** / **`install.<tag>.sh`** — Per-topic installer, run by `dotfiles install`. Package-manager topics (`homebrew`, `pacman`, `apt`, `mise`) run before the rest. Discovery uses `git ls-tree`, so new installers must be committed (or overlaid, as the test scripts do).
+5. **`*.symlink`** / **`*.<tag>.symlink`** — Symlinked to `$HOME/.filename` (stripping `.symlink` and the tag) by `dotfiles install`. Dangling links into the repo are removed.
 
 ### Packages
 
@@ -59,7 +68,7 @@ GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty
 
 ### Auto-Update
 
-`autoupdate/` installs a launchd agent on macOS (`install.darwin.sh`) or a systemd user timer `dot-update.timer` on Linux (`install.linux.sh`, with `loginctl enable-linger` for headless hosts). Both run `bin/dot_update` every 2 hours. Package installers skip sudo-requiring steps when there is no tty.
+`autoupdate/` installs a launchd agent on macOS (`install.darwin.sh`) or a systemd user timer `dot-update.timer` on Linux (`install.linux.sh`, with `loginctl enable-linger` for headless hosts). Both run `dotfiles update` every 2 hours. Package installers skip sudo-requiring steps when there is no tty.
 
 ### Environment Variables
 
@@ -69,14 +78,14 @@ GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty
 
 ### Local Customization (not versioned)
 
-- `~/.localrc` — Sourced at end of zshrc and by `dot_update` (must stay POSIX sh)
+- `~/.localrc` — Sourced at end of zshrc and by `dotfiles update` (must stay POSIX sh)
 - `~/.gitconfig.local` — Included by gitconfig
 - `~/.config/mise/config.local.toml` — Machine-specific mise tools
 
 ### Testing
 
-- macOS: `script/test-macos` (Tart VMs), `script/verify` over SSH
-- Linux: `script/test-linux` builds `script/docker/{arch,ubuntu}.Dockerfile` (x86-64, Rosetta on Apple Silicon), overlays the working tree into `~/.dotfiles`, runs bootstrap + verify + `zsh -ic`. Containers lack systemd, so timer state is only checked on the Ubuntu CI runner.
+- macOS: `script/test-macos` (Tart VMs) overlays the working tree into `~/.dotfiles`, runs `script/bootstrap`, `macos/set-defaults.sh`, `dotfiles verify` over SSH
+- Linux: `script/test-linux` builds `script/docker/{arch,ubuntu}.Dockerfile` (x86-64, Rosetta on Apple Silicon), overlays the working tree into `~/.dotfiles`, runs `script/bootstrap` + `dotfiles verify` + `zsh -ic`. Containers lack systemd, so timer state is only checked on the Ubuntu CI runner.
 - CI (`.github/workflows/ci.yml`): lint, bootstrap-macos, bootstrap-arch (CachyOS container), bootstrap-ubuntu (native 24.04 runner)
 
 ### Repository Assets

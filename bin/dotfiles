@@ -1,0 +1,496 @@
+#!/bin/bash
+#
+# dotfiles — manage this machine's dotfiles.
+#
+#   dotfiles install    Make this machine match the repo: symlinks, packages,
+#                       topic installers, login shell. Idempotent.
+#   dotfiles update     Pull the latest repo, then install; upgrade mise tools.
+#                       (What the launchd agent / systemd timer runs.)
+#   dotfiles verify     Check that install completed successfully on this platform.
+#   dotfiles defaults   Apply macOS system preferences (macos/set-defaults.sh).
+#   dotfiles ssh-key    Create an SSH key for this machine and register it with GitHub.
+#
+# First-time setup from nothing is script/bootstrap, which clones the repo and
+# then runs `dotfiles install`.
+
+set -uo pipefail
+
+DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+# shellcheck source=script/os.sh
+. "$DOTFILES_ROOT/script/os.sh"
+
+GITHUB_REPO="tylerwolf/dotfiles"
+PACKAGE_TOPICS="homebrew pacman apt mise"
+PLATFORM_TAGS="darwin linux arch debian"
+
+# ─── Output ───────────────────────────────────────────────────────────────────
+
+info()    { printf "\r  [ \033[00;34m..\033[0m ] %s\n" "$1" >&2; }
+user()    { printf "\r  [ \033[0;33m??\033[0m ] %s\n" "$1" >&2; }
+success() { printf "\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n" "$1" >&2; }
+fail_msg() { printf "\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n" "$1" >&2; }
+die()     { fail_msg "$1"; exit 1; }
+
+# Find a tool on PATH or in mise's install dir (mise only activates in zsh)
+tool_path() {
+  command -v "$1" 2>/dev/null && return 0
+  command -v mise >/dev/null 2>&1 && mise which "$1" 2>/dev/null
+}
+
+# ─── install ──────────────────────────────────────────────────────────────────
+
+link_file() {
+  local src="$1" dst="$2"
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
+    if [ "$(readlink "$dst")" = "$src" ]; then
+      success "skipped $dst"
+      return 0
+    fi
+    mv "$dst" "$dst.backup"
+    success "moved $dst to $dst.backup"
+  fi
+  ln -sf "$src" "$dst"
+  success "linked $dst -> $src"
+}
+
+# Symlink every *.symlink file into $HOME as a dotfile. A file tagged with a
+# platform (e.g. Brewfile.darwin.symlink) is linked only on that platform, with
+# the tag stripped from the target name (~/.Brewfile).
+link_dotfiles() {
+  info "linking dotfiles ($DOTFILES_TAGS)"
+  local src name tag
+  while IFS= read -r src; do
+    name="$(basename "${src%.symlink}")"
+    tag="${name##*.}"
+    case " $PLATFORM_TAGS " in
+    *" $tag "*)
+      case " $DOTFILES_TAGS " in
+      *" $tag "*) name="${name%.*}" ;;
+      *) continue ;;
+      esac
+      ;;
+    esac
+    link_file "$src" "$HOME/.$name"
+  done < <(find -H "$DOTFILES_ROOT" -maxdepth 3 -name '*.symlink' -not -path '*.git*' | sort)
+}
+
+# Remove dotfile symlinks that point into this repo but whose target is gone
+# (a removed topic, or a file tagged for another platform).
+clean_dotfiles() {
+  local link
+  for link in "$HOME"/.[!.]*; do
+    [ -L "$link" ] || continue
+    case "$(readlink "$link")" in
+    "$DOTFILES_ROOT"/* | "$HOME/.dotfiles"/*)
+      if [ ! -e "$link" ]; then
+        rm "$link"
+        success "removed dangling $link"
+      fi
+      ;;
+    esac
+  done
+}
+
+# Run tracked topic/install.sh (every platform) and topic/install.<tag>.sh
+# (matching tag only). Package-manager topics run first so later installers
+# find their tools.
+run_installers() {
+  local installers topic tag failed=0
+  installers="$(git -C "$DOTFILES_ROOT" ls-tree --name-only -r HEAD |
+    grep -E '^[^/]+/install(\.[a-z]+)?\.sh$' | sort)"
+
+  run_one() {
+    local installer="$1"
+    tag="${installer##*/install}"
+    tag="${tag%.sh}"
+    tag="${tag#.}"
+    if [ -n "$tag" ]; then
+      case " $DOTFILES_TAGS " in
+      *" $tag "*) ;;
+      *) return 0 ;;
+      esac
+    fi
+    echo "› ${installer}..."
+    if ! (cd "$DOTFILES_ROOT" && sh -c "./$installer"); then
+      fail_msg "$installer failed"
+      failed=$((failed + 1))
+    fi
+  }
+
+  # package topics in declared order (package managers before mise, which
+  # they install), then everything else alphabetically
+  info "running package installers"
+  local pkg_topic
+  for pkg_topic in $PACKAGE_TOPICS; do
+    for installer in $installers; do
+      [ "${installer%%/*}" = "$pkg_topic" ] && run_one "$installer"
+    done
+  done
+  info "running topic installers"
+  for installer in $installers; do
+    topic="${installer%%/*}"
+    case " $PACKAGE_TOPICS " in *" $topic "*) ;; *) run_one "$installer" ;; esac
+  done
+  return "$failed"
+}
+
+# On Linux the login shell is usually bash; offer to switch to zsh.
+setup_shell() {
+  [ "$DOTFILES_OS" = linux ] || return 0
+  local zsh_path answer
+  zsh_path="$(command -v zsh || true)"
+  [ -n "$zsh_path" ] || return 0
+  case "$SHELL" in *zsh) return 0 ;; esac
+  if [ -t 0 ]; then
+    user "Change your login shell to $zsh_path? [y/N]"
+    read -r answer
+    case "$answer" in
+    [Yy]*)
+      chsh -s "$zsh_path" && success "login shell set to zsh (takes effect at next login)"
+      ;;
+    *) info "keeping $SHELL" ;;
+    esac
+  else
+    info "login shell is $SHELL; run 'chsh -s $zsh_path' to switch to zsh"
+  fi
+}
+
+cmd_install() {
+  echo ""
+  link_dotfiles
+  clean_dotfiles
+  local failed=0
+  run_installers || failed=$?
+  setup_shell
+  echo ""
+  if [ "$failed" -eq 0 ]; then
+    success "install complete"
+  else
+    die "$failed installer(s) failed"
+  fi
+}
+
+# ─── update ───────────────────────────────────────────────────────────────────
+
+cmd_update() {
+  cd "$DOTFILES_ROOT" || die "cannot cd to $DOTFILES_ROOT"
+
+  # machine-local config (e.g. proxies) for runs under launchd/systemd
+  # shellcheck disable=SC1090,SC1091
+  [ -f "$HOME/.localrc" ] && . "$HOME/.localrc"
+
+  # ssh is unavailable under launchd/systemd; pull over https
+  git remote add updates "https://github.com/$GITHUB_REPO.git" 2>/dev/null
+
+  echo "› git update"
+  git pull --rebase --stat updates "$(git rev-parse --abbrev-ref HEAD)" ||
+    fail_msg "git pull failed; installing from the current checkout"
+
+  echo "› submodules update"
+  git submodule update --init --recursive --remote --merge --quiet
+
+  cmd_install
+
+  if command -v mise >/dev/null 2>&1; then
+    echo "› mise upgrade"
+    MISE_YES=1 mise upgrade
+  fi
+
+  git config --global dotfiles.lastupdate "$(date +%Y%m%d%H%M)"
+}
+
+# ─── verify ───────────────────────────────────────────────────────────────────
+
+failures=0
+flunk() {
+  fail_msg "$1"
+  failures=$((failures + 1))
+}
+
+verify_common() {
+  local symlinks=(".gitignore" ".vimrc" ".zshrc") link
+  [ "$DOTFILES_OS" = darwin ] && symlinks+=(".Brewfile")
+  for link in "${symlinks[@]}"; do
+    if [ -L "$HOME/$link" ]; then
+      success "symlink: ~/$link"
+    else
+      flunk "symlink missing: ~/$link"
+    fi
+  done
+
+  if [ -L "$HOME/.asdfrc" ] || { [ -L "$HOME/.Brewfile" ] && [ "$DOTFILES_OS" != darwin ]; }; then
+    flunk "stale symlink present (~/.asdfrc, or ~/.Brewfile on Linux)"
+  else
+    success "no stale symlinks"
+  fi
+
+  if git config --global --get core.pager 2>/dev/null | grep -q delta; then
+    success "git core.pager uses delta"
+  else
+    flunk "git core.pager not set to delta"
+  fi
+
+  if [ -d "$HOME/.antidote" ]; then
+    success "antidote cloned to ~/.antidote"
+  else
+    flunk "antidote missing (~/.antidote)"
+  fi
+
+  if [ -s "$HOME/.zsh_plugins.zsh" ]; then
+    success "antidote plugins generated (~/.zsh_plugins.zsh is non-empty)"
+  else
+    flunk "antidote plugins not generated (~/.zsh_plugins.zsh missing or empty)"
+  fi
+
+  if command -v mise >/dev/null 2>&1; then
+    success "mise installed ($(mise --version 2>/dev/null))"
+  else
+    flunk "mise not installed"
+  fi
+
+  if [ -L "$HOME/.config/mise/config.toml" ]; then
+    success "mise config linked (~/.config/mise/config.toml)"
+  else
+    flunk "mise config not linked"
+  fi
+
+  if [ -L "$HOME/.config/ghostty/config" ]; then
+    success "ghostty config linked (~/.config/ghostty/config)"
+  else
+    flunk "ghostty config not linked"
+  fi
+}
+
+# Validate the ghostty config wherever the binary exists (macOS app bundle or Linux package)
+verify_ghostty_config() {
+  local bin=""
+  if command -v ghostty >/dev/null 2>&1; then
+    bin="ghostty"
+  elif [ -x /Applications/Ghostty.app/Contents/MacOS/ghostty ]; then
+    bin=/Applications/Ghostty.app/Contents/MacOS/ghostty
+  else
+    info "ghostty binary not found; skipping config validation"
+    return 0
+  fi
+  if "$bin" +validate-config >/dev/null 2>&1; then
+    success "ghostty config validates"
+  else
+    flunk "ghostty config invalid: $("$bin" +validate-config 2>&1 | head -3)"
+  fi
+}
+
+verify_darwin() {
+  if /opt/homebrew/bin/brew --version >/dev/null 2>&1; then
+    success "homebrew installed"
+  else
+    flunk "homebrew not installed"
+  fi
+
+  local pkg
+  for pkg in git git-delta shellcheck atuin mise tealdeer; do
+    if /opt/homebrew/bin/brew list "$pkg" >/dev/null 2>&1; then
+      success "brew package: $pkg"
+    else
+      flunk "brew package missing: $pkg"
+    fi
+  done
+
+  if /opt/homebrew/bin/brew list --cask ghostty >/dev/null 2>&1; then
+    success "brew cask: ghostty"
+  else
+    flunk "brew cask missing: ghostty"
+  fi
+  verify_ghostty_config
+
+  if launchctl print "gui/$(id -u)/com.dotfiles.update" >/dev/null 2>&1; then
+    success "launchd agent com.dotfiles.update loaded"
+  elif [ -f "$HOME/Library/LaunchAgents/com.dotfiles.update.plist" ]; then
+    success "launchd plist installed (not yet loaded)"
+  else
+    flunk "launchd agent com.dotfiles.update not installed"
+  fi
+
+  # macOS defaults (spot-check representative non-default values)
+  local defaults_checks=(
+    "com.apple.dock:mineffect:scale"
+    "com.apple.finder:ShowPathbar:1"
+    "NSGlobalDomain:NSDocumentSaveNewDocumentsToCloud:0"
+  )
+  local entry domain rest key expected actual
+  for entry in "${defaults_checks[@]}"; do
+    domain="${entry%%:*}"
+    rest="${entry#*:}"
+    key="${rest%%:*}"
+    expected="${rest#*:}"
+    actual="$(defaults read "$domain" "$key" 2>/dev/null || echo "__MISSING__")"
+    if [ "$actual" = "$expected" ]; then
+      success "defaults: $domain $key = $expected"
+    else
+      flunk "defaults: $domain $key expected '$expected', got '$actual'"
+    fi
+  done
+}
+
+verify_arch() {
+  local pkg
+  for pkg in git git-delta shellcheck atuin mise tealdeer ghostty; do
+    if pacman -Q "$pkg" >/dev/null 2>&1; then
+      success "pacman package: $pkg"
+    else
+      flunk "pacman package missing: $pkg"
+    fi
+  done
+  verify_ghostty_config
+}
+
+verify_debian() {
+  local pkg bin
+  for pkg in git shellcheck tealdeer; do
+    if dpkg -s "$pkg" >/dev/null 2>&1; then
+      success "apt package: $pkg"
+    else
+      flunk "apt package missing: $pkg"
+    fi
+  done
+
+  if [ -L "$HOME/.config/mise/conf.d/cli-tools.toml" ]; then
+    success "mise CLI tools config linked"
+  else
+    flunk "mise CLI tools config not linked (~/.config/mise/conf.d/cli-tools.toml)"
+  fi
+
+  for bin in fzf bat fd eza delta zoxide atuin rg gh; do
+    if tool_path "$bin" >/dev/null; then
+      success "mise tool: $bin"
+    else
+      flunk "mise tool missing: $bin"
+    fi
+  done
+}
+
+verify_linux() {
+  local unit_dir="$HOME/.config/systemd/user"
+  if [ -f "$unit_dir/dot-update.timer" ] && [ -f "$unit_dir/dot-update.service" ]; then
+    success "systemd units installed (dot-update.timer, dot-update.service)"
+  else
+    flunk "systemd units missing in $unit_dir"
+  fi
+
+  if systemctl --user show-environment >/dev/null 2>&1; then
+    if systemctl --user is-enabled dot-update.timer >/dev/null 2>&1; then
+      success "systemd timer dot-update.timer enabled"
+    else
+      flunk "systemd timer dot-update.timer not enabled"
+    fi
+  else
+    info "no systemd user session (container?); skipping timer state check"
+  fi
+}
+
+cmd_verify() {
+  info "platform: $DOTFILES_TAGS"
+  verify_common
+  case "$DOTFILES_OS" in
+  darwin) verify_darwin ;;
+  linux)
+    case "$DOTFILES_DISTRO" in
+    arch) verify_arch ;;
+    debian) verify_debian ;;
+    *) info "unknown distro; skipping package checks" ;;
+    esac
+    verify_linux
+    ;;
+  esac
+
+  echo ""
+  if [ "$failures" -eq 0 ]; then
+    success "all verification checks passed"
+  else
+    die "$failures verification check(s) failed"
+  fi
+}
+
+# ─── defaults ─────────────────────────────────────────────────────────────────
+
+cmd_defaults() {
+  exec "$DOTFILES_ROOT/macos/set-defaults.sh"
+}
+
+# ─── ssh-key ──────────────────────────────────────────────────────────────────
+
+cmd_ssh_key() {
+  local key="$HOME/.ssh/id_ed25519" email host gh answer
+  host="$(hostname -s 2>/dev/null || hostname)"
+
+  if [ -f "$key" ]; then
+    success "ssh key exists: $key"
+  else
+    email="$(git config --global --get user.email || true)"
+    info "generating an ed25519 ssh key for this machine"
+    mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+    ssh-keygen -t ed25519 -C "${email:-$USER}@$host" -f "$key" || die "ssh-keygen failed"
+    success "created $key"
+  fi
+
+  echo ""
+  echo "  Public key ($key.pub):"
+  echo "    $(cat "$key.pub")"
+  echo ""
+
+  gh="$(tool_path gh || true)"
+  if [ -z "$gh" ]; then
+    info "gh not installed; add the key at https://github.com/settings/keys"
+    return 0
+  fi
+
+  if "$gh" auth status >/dev/null 2>&1; then
+    if "$gh" ssh-key list 2>/dev/null | grep -q -F "$(cut -d' ' -f2 "$key.pub")"; then
+      success "key already registered with GitHub"
+    else
+      "$gh" auth refresh -s admin:public_key >/dev/null 2>&1 || true
+      if "$gh" ssh-key add "$key.pub" --title "$host"; then
+        success "key registered with GitHub as '$host'"
+      else
+        fail_msg "could not register the key; add it at https://github.com/settings/keys"
+      fi
+    fi
+  elif [ -t 0 ]; then
+    user "Log in to GitHub now to register this key? [y/N]"
+    read -r answer
+    case "$answer" in
+    [Yy]*)
+      # gh offers to upload the ssh key during login when the protocol is ssh
+      "$gh" auth login --hostname github.com --git-protocol ssh || fail_msg "gh auth login failed"
+      ;;
+    *) info "skipped; run 'dotfiles ssh-key' later, or add the key at https://github.com/settings/keys" ;;
+    esac
+  else
+    info "not logged in to GitHub; run 'dotfiles ssh-key' interactively to register the key"
+  fi
+
+  # Push over ssh from now on (the updater keeps its own https remote)
+  local origin
+  origin="$(git -C "$DOTFILES_ROOT" remote get-url origin 2>/dev/null || true)"
+  case "$origin" in
+  https://github.com/*)
+    git -C "$DOTFILES_ROOT" remote set-url origin "git@github.com:$GITHUB_REPO.git"
+    success "origin switched to ssh"
+    ;;
+  esac
+}
+
+# ─── main ─────────────────────────────────────────────────────────────────────
+
+usage() {
+  sed -n '3,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  exit 1
+}
+
+case "${1:-}" in
+install) cmd_install ;;
+update) cmd_update ;;
+verify) cmd_verify ;;
+defaults) cmd_defaults ;;
+ssh-key) cmd_ssh_key ;;
+*) usage ;;
+esac

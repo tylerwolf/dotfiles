@@ -5,4 +5,4 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=%h/.dotfiles/bin/dot_update
+ExecStart=%h/.dotfiles/bin/dotfiles update

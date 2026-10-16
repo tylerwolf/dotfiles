@@ -1,167 +1,113 @@
 #!/bin/sh
 #
-# bootstrap installs things.
-
-cd "$(dirname "$0")/.."
-DOTFILES_ROOT=$(pwd -P)
+# bootstrap — set up a new machine from nothing.
+#
+#   sh -c "$(curl -fsSL https://raw.githubusercontent.com/tylerwolf/dotfiles/main/script/bootstrap)"
+#
+# Installs the bare prerequisites (git; Command Line Tools on macOS), clones the
+# repo to ~/.dotfiles over https, runs `dotfiles install`, then offers to create
+# and register an SSH key for this machine. Safe to re-run: an existing clone is
+# reused. Everything after the clone lives in bin/dotfiles.
+#
+# Environment:
+#   DOTFILES_DIR     where to clone (default ~/.dotfiles)
+#   DOTFILES_REPO    git URL or local path to clone from (default the GitHub repo)
+#   DOTFILES_BRANCH  branch to check out (default: the repo's default branch)
 
 set -e
 
-# shellcheck source=script/os.sh
-. "$DOTFILES_ROOT/script/os.sh"
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/tylerwolf/dotfiles.git}"
+DOTFILES_BRANCH="${DOTFILES_BRANCH:-}"
 
-echo ''
-
-info() {
-	# shellcheck disable=SC2059
-	printf "\r  [ \033[00;34m..\033[0m ] $1\n"
-}
-
-user() {
-	# shellcheck disable=SC2059
-	printf "\r  [ \033[0;33m??\033[0m ] $1\n"
-}
-
-success() {
-	# shellcheck disable=SC2059
-	printf "\r\033[2K  [ \033[00;32mOK\033[0m ] $1\n"
-}
-
+info() { printf "\r  [ \033[00;34m..\033[0m ] %s\n" "$1" >&2; }
+success() { printf "\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n" "$1" >&2; }
 fail() {
-	# shellcheck disable=SC2059
-	printf "\r\033[2K  [\033[0;31mFAIL\033[0m] $1\n"
-	echo ''
-	exit
+	printf "\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n" "$1" >&2
+	exit 1
 }
 
-setup_gitconfig() {
-	info 'setup gitconfig'
-	# if there is no user.email, we'll assume it's a new machine/setup and ask it
-	if [ -z "$(git config --global --get user.email)" ]; then
-		user ' - What is your github author name?'
-		read -r user_name
-		user ' - What is your github author email?'
-		read -r user_email
-
-		git config --global user.name "$user_name"
-		git config --global user.email "$user_email"
-	elif [ "$(git config --global --get dotfiles.managed)" != "true" ]; then
-		# if user.email exists, let's check for dotfiles.managed config. If it is
-		# not true, we'll backup the gitconfig file and set previous user.email and
-		# user.name in the new one
-		user_name="$(git config --global --get user.name)"
-		user_email="$(git config --global --get user.email)"
-		mv ~/.gitconfig ~/.gitconfig.backup
-		success "moved ~/.gitconfig to ~/.gitconfig.backup"
-		git config --global user.name "$user_name"
-		git config --global user.email "$user_email"
-	else
-		# otherwise this gitconfig was already made by the dotfiles
-		info "already managed by dotfiles"
-	fi
-	# include the gitconfig.local file
-	git config --global include.path ~/.gitconfig.local
-	# finally make git knows this is a managed config already, preventing later
-	# overrides by this script
-	git config --global dotfiles.managed true
-	success 'gitconfig'
-}
-
-link_file() {
-	if [ -e "$2" ]; then
-		if [ "$(readlink "$2")" = "$1" ]; then
-			success "skipped $1"
-			return 0
-		else
-			mv "$2" "$2.backup"
-			success "moved $2 to $2.backup"
+detect_os() {
+	case "$(uname -s)" in
+	Darwin) OS=darwin ;;
+	Linux) OS=linux ;;
+	*) fail "unsupported OS: $(uname -s)" ;;
+	esac
+	DISTRO=""
+	if [ "$OS" = linux ]; then
+		if [ -f /etc/arch-release ]; then
+			DISTRO=arch
+		elif [ -f /etc/debian_version ]; then
+			DISTRO=debian
 		fi
 	fi
-	ln -sf "$1" "$2"
-	success "linked $1 to $2"
 }
 
-# Symlink every *.symlink file into $HOME as a dotfile. A file tagged with a
-# platform (e.g. Brewfile.darwin.symlink) is linked only on that platform, with
-# the tag stripped from the target name (~/.Brewfile).
-install_dotfiles() {
-	info "installing dotfiles ($DOTFILES_TAGS)"
-	find -H "$DOTFILES_ROOT" -maxdepth 3 -name '*.symlink' -not -path '*.git*' |
-		while read -r src; do
-			name="$(basename "${src%.symlink}")"
-			tag="${name##*.}"
-			case "$tag" in
-			darwin | linux | arch | debian)
-				case " $DOTFILES_TAGS " in
-				*" $tag "*) name="${name%.*}" ;;
-				*) continue ;;
-				esac
-				;;
+# The bare minimum needed to clone the repo; `dotfiles install` does the rest.
+install_prerequisites() {
+	case "$OS" in
+	darwin)
+		if ! xcode-select -p >/dev/null 2>&1; then
+			info "installing Xcode Command Line Tools (follow the dialog)"
+			xcode-select --install 2>/dev/null || true
+			until xcode-select -p >/dev/null 2>&1; do sleep 10; done
+			success "Command Line Tools installed"
+		fi
+		;;
+	linux)
+		command -v sudo >/dev/null 2>&1 || fail "sudo is required"
+		if ! command -v git >/dev/null 2>&1; then
+			info "installing git"
+			case "$DISTRO" in
+			arch) sudo pacman -Syu --needed --noconfirm git ;;
+			debian) sudo apt-get update -q && sudo apt-get install -y -q git ;;
+			*) fail "unknown Linux distro; install git and re-run" ;;
 			esac
-			link_file "$src" "$HOME/.$name"
-		done
-}
-
-# Remove dotfile symlinks that point into this repo but whose target is gone
-# (e.g. a topic was removed, or a file is tagged for another platform).
-cleanup_dotfiles() {
-	for link in "$HOME"/.[!.]*; do
-		[ -L "$link" ] || continue
-		case "$(readlink "$link")" in
-		"$DOTFILES_ROOT"/* | "$HOME/.dotfiles"/*)
-			if [ ! -e "$link" ]; then
-				rm "$link"
-				success "removed dangling $link"
-			fi
-			;;
-		esac
-	done
-}
-
-setup_packages() {
-	info "installing packages ($DOTFILES_TAGS)"
-	case "$DOTFILES_OS/$DOTFILES_DISTRO" in
-	darwin/*) "$DOTFILES_ROOT"/homebrew/install.darwin.sh ;;
-	linux/arch) "$DOTFILES_ROOT"/pacman/install.arch.sh ;;
-	linux/debian) "$DOTFILES_ROOT"/apt/install.debian.sh ;;
-	*) info "no package installer for $DOTFILES_OS/$DOTFILES_DISTRO; skipping" ;;
+		fi
+		;;
 	esac
-	success 'packages'
+	command -v git >/dev/null 2>&1 || fail "git is still missing"
+	success "prerequisites present"
 }
 
-# On Linux the login shell is usually bash; offer to switch to zsh.
-setup_shell() {
-	[ "$DOTFILES_OS" = linux ] || return 0
-	zsh_path="$(command -v zsh || true)"
-	[ -n "$zsh_path" ] || return 0
-	case "$SHELL" in *zsh) return 0 ;; esac
-	if [ -t 0 ]; then
-		user " - Change your login shell to $zsh_path? [y/N]"
-		read -r answer
-		case "$answer" in
-		[Yy]*)
-			chsh -s "$zsh_path"
-			success "login shell set to zsh (takes effect at next login)"
-			;;
-		*) info "keeping $SHELL" ;;
-		esac
-	else
-		info "login shell is $SHELL; run 'chsh -s $zsh_path' to switch to zsh"
+clone_repo() {
+	if [ -x "$DOTFILES_DIR/bin/dotfiles" ]; then
+		success "using existing clone at $DOTFILES_DIR"
+		return 0
 	fi
+	[ -e "$DOTFILES_DIR" ] && fail "$DOTFILES_DIR exists but is not a dotfiles clone"
+	info "cloning $DOTFILES_REPO to $DOTFILES_DIR"
+	if [ -n "$DOTFILES_BRANCH" ]; then
+		git clone --branch "$DOTFILES_BRANCH" "$DOTFILES_REPO" "$DOTFILES_DIR"
+	else
+		git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
+	fi
+	success "cloned"
 }
 
-setup_gitconfig
-install_dotfiles
-cleanup_dotfiles
-setup_packages
-setup_shell
+main() {
+	echo ""
+	detect_os
+	info "platform: $OS${DISTRO:+ $DISTRO}"
+	install_prerequisites
+	clone_repo
 
-info "installing dependencies"
-if ./bin/dot_update; then
-	success "dependencies installed"
-else
-	fail "error installing dependencies"
-fi
+	"$DOTFILES_DIR/bin/dotfiles" install || fail "dotfiles install failed"
 
-echo ''
-echo '  All installed!'
+	if [ -t 0 ]; then
+		"$DOTFILES_DIR/bin/dotfiles" ssh-key || true
+	else
+		info "no terminal; run 'dotfiles ssh-key' later to register an SSH key with GitHub"
+	fi
+
+	echo ""
+	echo "  All set. Next:"
+	echo "    - open a new terminal (log out and back in if your login shell changed)"
+	if [ "$OS" = darwin ]; then
+		echo "    - optionally apply macOS preferences: dotfiles defaults"
+	fi
+	echo "    - check everything: dotfiles verify"
+	echo ""
+}
+
+main "$@"

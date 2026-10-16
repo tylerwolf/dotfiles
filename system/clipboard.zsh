@@ -29,4 +29,4 @@ if ! command -v open &>/dev/null && command -v xdg-open &>/dev/null; then
 fi
 
 # Pipe my public key to my clipboard.
-alias pubkey="cat ~/.ssh/id_rsa.pub | pbcopy && echo '=> Public key copied to pasteboard.'"
+alias pubkey='for k in ~/.ssh/id_ed25519.pub ~/.ssh/id_rsa.pub; do [[ -f $k ]] && { pbcopy < $k && echo "=> $k copied to pasteboard."; break; }; done'

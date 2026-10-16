@@ -37,7 +37,7 @@ jobs:
         run: ./macos/set-defaults.sh
 
       - name: Run verification
-        run: ./script/verify
+        run: ./bin/dotfiles verify
 
   bootstrap-arch:
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
         run: ./script/bootstrap
 
       - name: Run verification
-        run: ./script/verify
+        run: ./bin/dotfiles verify
 
       - name: Start zsh
         run: zsh -ic 'echo "zsh started OK"'
@@ -85,7 +85,7 @@ jobs:
         run: ./script/bootstrap
 
       - name: Run verification
-        run: ./script/verify
+        run: ./bin/dotfiles verify
 
       - name: Start zsh
         run: zsh -ic 'echo "zsh started OK"'
