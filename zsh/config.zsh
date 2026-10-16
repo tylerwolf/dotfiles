@@ -37,8 +37,8 @@ setopt HIST_EXPIRE_DUPS_FIRST
 # dont ask for confirmation in rm globs*
 setopt RM_STAR_SILENT
 
-# atuin handles up/down arrow history search; only bind fallback without it
-if ! command -v atuin &>/dev/null; then
+# up/down arrows: atuin's history search when it loaded, else prefix search
+if ! (( $+widgets[atuin-up-search] )); then
   zle -N up-line-or-beginning-search
   zle -N down-line-or-beginning-search
 
@@ -72,7 +72,13 @@ bindkey '^[[3;5~' backward-delete-word
 bindkey '^W' backward-delete-word
 # bindkey '^[[3~' backward-delete-word
 
-# fzf/atuin handle Ctrl+R; fall back to basic history search without either
-if ! command -v fzf &>/dev/null && ! command -v atuin &>/dev/null; then
-	bindkey '^R' history-incremental-search-backward
+# Ctrl+R: atuin owns it when loaded (fzf keeps Ctrl+T / Alt+C), else fzf,
+# else plain history search. Explicit, since topic files load alphabetically
+# and whichever bound ^R last would otherwise win.
+if (( $+widgets[atuin-search] )); then
+  bindkey '^R' atuin-search
+elif (( $+widgets[fzf-history-widget] )); then
+  bindkey '^R' fzf-history-widget
+else
+  bindkey '^R' history-incremental-search-backward
 fi

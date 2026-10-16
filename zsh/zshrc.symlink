@@ -7,7 +7,9 @@ export PROJECTS="$HOME/Code"
 
 # your default editor
 export EDITOR='vim'
-export VEDITOR='code'
+
+# keep PATH free of duplicates (reload! re-sources every path file)
+typeset -U path PATH
 
 # platform tags: "darwin", "linux arch" or "linux debian".
 # Mirrors script/os.sh without forking a process.

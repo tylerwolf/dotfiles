@@ -255,6 +255,22 @@ verify_common() {
   else
     flunk "ghostty config not linked"
   fi
+
+  # The shell actually starts, and the history tools are wired up: atuin loaded
+  # (which proves mise-installed tools are on PATH early enough on Ubuntu) and
+  # owns Ctrl-R.
+  local zsh_report
+  zsh_report="$(zsh -ic 'zle -la | grep -q "^atuin-search$" && echo atuin-loaded; bindkey "^R"' 2>&1)"
+  if printf '%s' "$zsh_report" | grep -q "atuin-loaded"; then
+    success "zsh starts with atuin loaded"
+  else
+    flunk "zsh did not load atuin: $(printf '%s' "$zsh_report" | head -3)"
+  fi
+  if printf '%s' "$zsh_report" | grep -q 'atuin-search$'; then
+    success "zsh: Ctrl-R bound to atuin-search"
+  else
+    flunk "zsh: Ctrl-R not bound to atuin-search ($(printf '%s' "$zsh_report" | tail -1))"
+  fi
 }
 
 # Validate the ghostty config wherever the binary exists (macOS app bundle or Linux package)
