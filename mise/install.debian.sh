@@ -3,6 +3,8 @@
 # Debian/Ubuntu only: have mise install the modern CLI tools that apt ships
 # stale or missing (see mise/cli-tools.debian.toml).
 
+set -e
+
 # shellcheck source=script/os.sh
 . "$(dirname "$0")/../script/os.sh"
 

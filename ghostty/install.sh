@@ -4,6 +4,8 @@
 # (homebrew cask / pacman); this links the shared config. Linking is harmless
 # on headless hosts where Ghostty isn't installed.
 
+set -e
+
 # shellcheck source=script/os.sh
 . "$(dirname "$0")/../script/os.sh"
 

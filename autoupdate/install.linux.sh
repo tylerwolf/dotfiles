@@ -2,6 +2,8 @@
 # Sets up a systemd user timer to run `dotfiles update` every 2 hours
 # (the Linux counterpart of the launchd agent in install.darwin.sh).
 
+set -e
+
 # shellcheck source=script/os.sh
 . "$(dirname "$0")/../script/os.sh"
 

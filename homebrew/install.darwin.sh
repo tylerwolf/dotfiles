@@ -5,6 +5,8 @@
 # Installs Homebrew if missing, then installs everything in ~/.Brewfile.
 # Other platforms: pacman/install.arch.sh, apt/install.debian.sh.
 
+set -e
+
 # shellcheck source=script/os.sh
 . "$(dirname "$0")/../script/os.sh"
 

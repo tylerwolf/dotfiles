@@ -4,6 +4,8 @@
 # (upstream's recommended method; Arch and Ubuntu don't package a current
 # version). Generates the static ~/.zsh_plugins.zsh that zshrc sources.
 
+set -e
+
 # shellcheck source=script/os.sh
 . "$(dirname "$0")/../script/os.sh"
 

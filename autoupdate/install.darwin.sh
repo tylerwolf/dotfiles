@@ -1,6 +1,8 @@
 #!/bin/sh
 # Sets up a launchd agent to run `dotfiles update` every 2 hours.
 
+set -e
+
 PLIST_NAME="com.dotfiles.update"
 PLIST_SRC="$HOME/.dotfiles/autoupdate/${PLIST_NAME}.plist"
 PLIST_DST="$HOME/Library/LaunchAgents/${PLIST_NAME}.plist"
@@ -15,7 +17,7 @@ fi
 mkdir -p "$HOME/Library/LaunchAgents"
 
 # Unload old agent if loaded (ignore errors)
-launchctl bootout "gui/$(id -u)/${PLIST_NAME}" 2>/dev/null
+launchctl bootout "gui/$(id -u)/${PLIST_NAME}" 2>/dev/null || true
 
 # Install plist (expand $HOME in the template)
 sed "s|\$HOME|$HOME|g" "$PLIST_SRC" > "$PLIST_DST"

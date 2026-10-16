@@ -2,6 +2,8 @@
 #
 # git: identity (asked once, on a terminal), defaults, credential helper, delta.
 
+set -e
+
 # shellcheck source=script/os.sh
 . "$(dirname "$0")/../script/os.sh"
 

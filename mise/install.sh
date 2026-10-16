@@ -5,6 +5,8 @@
 # (homebrew/pacman/apt topics); this links the global config and installs
 # the configured runtimes.
 
+set -e
+
 # shellcheck source=script/os.sh
 . "$(dirname "$0")/../script/os.sh"
 
