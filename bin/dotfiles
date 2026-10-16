@@ -370,17 +370,17 @@ verify_debian() {
 
 verify_linux() {
   local unit_dir="$HOME/.config/systemd/user"
-  if [ -f "$unit_dir/dot-update.timer" ] && [ -f "$unit_dir/dot-update.service" ]; then
-    success "systemd units installed (dot-update.timer, dot-update.service)"
+  if [ -f "$unit_dir/dotfiles-update.timer" ] && [ -f "$unit_dir/dotfiles-update.service" ]; then
+    success "systemd units installed (dotfiles-update.timer, dotfiles-update.service)"
   else
     flunk "systemd units missing in $unit_dir"
   fi
 
   if systemctl --user show-environment >/dev/null 2>&1; then
-    if systemctl --user is-enabled dot-update.timer >/dev/null 2>&1; then
-      success "systemd timer dot-update.timer enabled"
+    if systemctl --user is-enabled dotfiles-update.timer >/dev/null 2>&1; then
+      success "systemd timer dotfiles-update.timer enabled"
     else
-      flunk "systemd timer dot-update.timer not enabled"
+      flunk "systemd timer dotfiles-update.timer not enabled"
     fi
   else
     info "no systemd user session (container?); skipping timer state check"

@@ -17,7 +17,7 @@ if crontab -l 2>/dev/null | grep -q dot_update; then
 fi
 
 mkdir -p "$UNIT_DIR"
-cp "$dir/dot-update.service" "$dir/dot-update.timer" "$UNIT_DIR/"
+cp "$dir/dotfiles-update.service" "$dir/dotfiles-update.timer" "$UNIT_DIR/"
 
 if ! command -v systemctl >/dev/null 2>&1 || ! systemctl --user show-environment >/dev/null 2>&1; then
 	echo "› systemd user session unavailable (container?); unit files copied, timer not enabled"
@@ -25,8 +25,8 @@ if ! command -v systemctl >/dev/null 2>&1 || ! systemctl --user show-environment
 fi
 
 systemctl --user daemon-reload
-systemctl --user enable --now dot-update.timer
-echo "› systemd timer dot-update.timer enabled"
+systemctl --user enable --now dotfiles-update.timer
+echo "› systemd timer dotfiles-update.timer enabled"
 
 # Keep the user manager (and the timer) running without a login session,
 # e.g. on a headless server.

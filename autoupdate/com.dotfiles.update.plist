@@ -13,9 +13,9 @@
 	<key>StartInterval</key>
 	<integer>7200</integer>
 	<key>StandardOutPath</key>
-	<string>/tmp/dot_update.log</string>
+	<string>$HOME/Library/Logs/dotfiles-update.log</string>
 	<key>StandardErrorPath</key>
-	<string>/tmp/dot_update.log</string>
+	<string>$HOME/Library/Logs/dotfiles-update.log</string>
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>HOME</key>

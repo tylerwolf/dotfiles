@@ -135,8 +135,9 @@ When adding a tool, add it to all of them.
 ## Keeping Up to Date
 
 `dotfiles update` pulls the latest changes, updates submodules, re-runs all installers, and upgrades mise-managed tools.
-It runs every 2 hours from a launchd agent on macOS or a systemd user timer (`dot-update.timer`) on Linux, both installed by the `autoupdate/` topic.
+It runs every 2 hours from a launchd agent on macOS or a systemd user timer (`dotfiles-update.timer`) on Linux, both installed by the `autoupdate/` topic.
 On a headless Linux box the installer enables lingering so the timer runs without a login session.
+Logs: `~/Library/Logs/dotfiles-update.log` on macOS, `journalctl --user -u dotfiles-update` on Linux.
 Package installs that need a sudo password are skipped when there is no terminal; run `dotfiles update` interactively to pick them up.
 
 ## Local Customization
