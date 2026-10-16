@@ -3,3 +3,8 @@
 # CachyOS ships a system-wide Ghostty config that forces `command = fish`.
 # Use the login shell set up by `dotfiles install` instead.
 command = /usr/bin/zsh
+
+# Quit when the last window closes. Otherwise a windowless Ghostty lingers and
+# the next launch's single-instance handoff fails on KDE Plasma with a
+# "remote peer disconnected" notification.
+quit-after-last-window-closed = true

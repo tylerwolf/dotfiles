@@ -42,10 +42,6 @@ window-save-state = always
 # iTerm2-style hotkey drop-down terminal
 keybind = global:cmd+grave_accent=toggle_quick_terminal
 
-# Linux (GTK)
-# Launching Ghostty again opens a window in the running instance
-gtk-single-instance = true
-
 # zsh integration: prompt jumping, sudo passthrough, window titles, and SSH helpers
 # (ssh-terminfo installs Ghostty's terminfo on remote hosts so TERM works over ssh)
 shell-integration = zsh
