@@ -1,6 +1,8 @@
 #!/bin/sh
 #
 # Arch-family packages (CachyOS): official repos via pacman, AUR via yay/paru.
+# Asks pacman what is missing first (no privileges needed) and only calls sudo
+# when something actually has to be installed.
 # Other platforms: homebrew/install.darwin.sh, apt/install.debian.sh.
 
 set -e
@@ -15,26 +17,43 @@ packages() {
 	sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$1" | tr '\n' ' '
 }
 
-# Under the systemd timer there is no tty, so a sudo password prompt would hang.
-if ! sudo -n true 2>/dev/null && [ ! -t 0 ]; then
-	echo "  sudo needs a password and there is no terminal; skipping package sync"
-	echo "  (run 'dotfiles update' interactively to install new packages)"
+# names from a list that are not installed
+missing() {
+	for pkg in "$@"; do
+		pacman -Q "$pkg" >/dev/null 2>&1 || printf '%s ' "$pkg"
+	done
+}
+
+# shellcheck disable=SC2046
+missing_pkgs="$(missing $(packages "$dir/packages.txt"))"
+# shellcheck disable=SC2046
+missing_aur="$(missing $(packages "$dir/aur.txt"))"
+
+if [ -z "$missing_pkgs" ] && [ -z "$missing_aur" ]; then
+	echo "  all packages installed"
 	exit 0
 fi
 
-pkgs="$(packages "$dir/packages.txt")"
-# shellcheck disable=SC2086
-sudo pacman -S --needed --noconfirm $pkgs
+# Under the systemd timer there is no tty, so a sudo password prompt would hang.
+if ! sudo -n true 2>/dev/null && [ ! -t 0 ]; then
+	echo "  packages to install:${missing_pkgs:+ $missing_pkgs}${missing_aur:+ $missing_aur}"
+	echo "  sudo needs a password and there is no terminal; run 'dotfiles update' interactively"
+	exit 0
+fi
 
-aur="$(packages "$dir/aur.txt")"
-if [ -n "$aur" ]; then
+if [ -n "$missing_pkgs" ]; then
+	# shellcheck disable=SC2086
+	sudo pacman -S --needed --noconfirm $missing_pkgs
+fi
+
+if [ -n "$missing_aur" ]; then
 	if command -v yay >/dev/null 2>&1; then
 		# shellcheck disable=SC2086
-		yay -S --needed --noconfirm $aur
+		yay -S --needed --noconfirm $missing_aur
 	elif command -v paru >/dev/null 2>&1; then
 		# shellcheck disable=SC2086
-		paru -S --needed --noconfirm $aur
+		paru -S --needed --noconfirm $missing_aur
 	else
-		echo "  no AUR helper (yay/paru) found; skipping: $aur"
+		echo "  no AUR helper (yay/paru) found; skipping: $missing_aur"
 	fi
 fi
