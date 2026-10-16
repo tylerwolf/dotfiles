@@ -175,10 +175,6 @@ cmd_install() {
 cmd_update() {
   cd "$DOTFILES_ROOT" || die "cannot cd to $DOTFILES_ROOT"
 
-  # machine-local config (e.g. proxies) for runs under launchd/systemd
-  # shellcheck disable=SC1090,SC1091
-  [ -f "$HOME/.localrc" ] && . "$HOME/.localrc"
-
   # ssh is unavailable under launchd/systemd; pull over https
   git remote add updates "https://github.com/$GITHUB_REPO.git" 2>/dev/null
 

@@ -144,7 +144,7 @@ Package installs that need a sudo password are skipped when there is no terminal
 
 These files are not checked in and won't be overwritten:
 
-- **`~/.localrc`** — sourced at end of zshrc and by `dotfiles update` (keep it POSIX sh compatible)
+- **`~/.localrc`** — sourced at the end of zshrc (zsh syntax is fine; nothing else reads it)
 - **`~/.gitconfig.local`** — included by gitconfig for machine-specific git settings
 - **`~/.config/mise/config.local.toml`** — machine-specific mise tools
 

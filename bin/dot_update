@@ -1,5 +1,0 @@
-#!/bin/sh
-# Compatibility shim: the launchd agent installed before the `dotfiles` command
-# existed still calls this. The next `dotfiles update` rewrites the agent to
-# call `dotfiles update` directly; delete this file after that.
-exec "$(dirname "$0")/dotfiles" update

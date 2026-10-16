@@ -19,8 +19,6 @@ Three layers, each with one job:
   - `dotfiles ssh-key` — Generate `~/.ssh/id_ed25519` if missing, register with GitHub via `gh`, switch `origin` to ssh.
 - `topic/install.sh` — Per-topic setup, run by `dotfiles install`.
 
-`bin/dot_update` is a temporary shim (`dotfiles update`) for launchd agents installed before the rename; delete once no machine's plist references it.
-
 - `make lint` — Run shellcheck on all shell scripts (`.sh` files, `script/*`, `bin/*`)
 - `make verify` — `dotfiles verify`
 - `make macos-setup` — One-time: install Tart, pull macOS Tahoe base image
@@ -78,7 +76,7 @@ GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty
 
 ### Local Customization (not versioned)
 
-- `~/.localrc` — Sourced at end of zshrc and by `dotfiles update` (must stay POSIX sh)
+- `~/.localrc` — Sourced at the end of zshrc only (zsh syntax allowed; `dotfiles update` does not read it)
 - `~/.gitconfig.local` — Included by gitconfig
 - `~/.config/mise/config.local.toml` — Machine-specific mise tools
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# os.sh — platform detection shared by bootstrap, install, dot_update and
+# os.sh — platform detection shared by bootstrap, the dotfiles command and
 # every topic installer. Source it, don't run it:
 #
 #   . "$(dirname "$0")/../script/os.sh"
