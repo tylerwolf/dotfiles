@@ -1,0 +1,12 @@
+# Keep CI action tags and test images current. Runtime/tool versions are
+# managed by mise (see mise/global.toml) and the platform package managers.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: docker
+    directory: /script/docker
+    schedule:
+      interval: monthly

@@ -6,7 +6,7 @@
 # .tool-versions / mise.toml files still override these.
 
 [tools]
-node = "25.8.0"
+node = "lts"   # latest LTS line; `mise upgrade` (run by dotfiles update) tracks it
 
 [settings]
 # read .node-version / .nvmrc etc. (was `legacy_version_file = yes` in .asdfrc)

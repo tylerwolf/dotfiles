@@ -160,7 +160,7 @@ Requires a logout or restart to take full effect. It is a no-op on Linux.
 
 ## Testing & CI
 
-A GitHub Actions CI pipeline runs on every push: shellcheck linting, then a full bootstrap + verification on a macOS runner, in a CachyOS container, and on an Ubuntu 24.04 runner.
+A GitHub Actions CI pipeline runs on every push: shellcheck linting, then a full bootstrap + verification on a macOS runner, in a CachyOS container, and on an Ubuntu 24.04 runner. Dependabot keeps the action tags and Docker base images current.
 
 Locally, you can verify an installed machine, or run `script/bootstrap` end to end in a sandbox:
 

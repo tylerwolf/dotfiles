@@ -84,7 +84,7 @@ GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty
 
 - macOS: `script/test-macos` (Tart VMs) overlays the working tree into `~/.dotfiles`, runs `script/bootstrap`, `macos/set-defaults.sh`, `dotfiles verify` over SSH
 - Linux: `script/test-linux` builds `script/docker/{arch,ubuntu}.Dockerfile` (x86-64, Rosetta on Apple Silicon), overlays the working tree into `~/.dotfiles`, runs `script/bootstrap` + `dotfiles verify` + `zsh -ic`. Containers lack systemd, so timer state is only checked on the Ubuntu CI runner.
-- CI (`.github/workflows/ci.yml`): lint, bootstrap-macos, bootstrap-arch (CachyOS container), bootstrap-ubuntu (native 24.04 runner)
+- CI (`.github/workflows/ci.yml`): lint, bootstrap-macos, bootstrap-arch (CachyOS container), bootstrap-ubuntu (native 24.04 runner). Dependabot (`.github/dependabot.yml`) bumps action tags and the Docker base images monthly; tool versions are mise's job.
 
 ### Repository Assets
 
