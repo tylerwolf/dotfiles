@@ -42,8 +42,8 @@ tool_path() {
 # launchd and systemd all assume ~/.dotfiles. Refuse to run from anywhere else
 # (e.g. a development clone) rather than split the machine between two trees.
 require_deploy_dir() {
-  local deploy
-  deploy="$(cd "$DEPLOY_DIR" 2>/dev/null && pwd -P || true)"
+  local deploy=""
+  deploy="$(cd "$DEPLOY_DIR" 2>/dev/null && pwd -P)" || deploy=""
   if [ "$deploy" != "$DOTFILES_ROOT" ]; then
     die "run this from $DEPLOY_DIR (this checkout is $DOTFILES_ROOT)"
   fi
