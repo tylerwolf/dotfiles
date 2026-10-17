@@ -32,9 +32,6 @@ echo "  › Disable smart quotes and smart dashes as they're annoying when typin
 defaults write NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled -bool false
 defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
 
-echo "  › Disable the 'Are you sure you want to open this application?' dialog"
-defaults write com.apple.LaunchServices LSQuarantine -bool false
-
 echo "  › Enable Debug Menu in the Mac App Store"
 defaults write com.apple.appstore ShowDebugMenu -bool true
 
