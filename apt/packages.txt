@@ -8,6 +8,7 @@ zsh
 git
 curl
 ca-certificates
+gpg              # extrepo needs it to add the mise repo
 shellcheck
 libatomic1       # needed by node binaries from mise
 

@@ -1,13 +1,3 @@
-atom.symlink/.node-gyp
-atom.symlink/.storage
-atom.symlink/compile-cache/
-atom.symlink/packages
-atom.symlink/storage
-atom.symlink/themes
-
-git/gitconfig.symlink
-
-
 # Created by https://www.gitignore.io/api/vim,intellij,osx
 
 ### Vim ###

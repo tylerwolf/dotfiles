@@ -10,13 +10,14 @@
 # reused. Everything after the clone lives in bin/dotfiles.
 #
 # Environment:
-#   DOTFILES_DIR     where to clone (default ~/.dotfiles)
 #   DOTFILES_REPO    git URL or local path to clone from (default the GitHub repo)
 #   DOTFILES_BRANCH  branch to check out (default: the repo's default branch)
+# The clone always lands in ~/.dotfiles; the shell config, launchd agent and
+# systemd unit all assume that path.
 
 set -e
 
-DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
+DOTFILES_DIR="$HOME/.dotfiles"
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/tylerwolf/dotfiles.git}"
 DOTFILES_BRANCH="${DOTFILES_BRANCH:-}"
 

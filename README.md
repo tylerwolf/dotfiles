@@ -24,7 +24,7 @@ On a new machine, run the one-liner:
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/tylerwolf/dotfiles/main/script/bootstrap)"
 ```
 
-`script/bootstrap` installs the bare prerequisites (git, and the Command Line Tools on macOS), clones this repo to `~/.dotfiles`, runs `dotfiles install`, and offers to create and register an SSH key for the machine with GitHub. Re-running it on an existing clone is safe.
+`script/bootstrap` installs the bare prerequisites (git, and the Command Line Tools on macOS), clones this repo to `~/.dotfiles`, runs `dotfiles install`, and offers to create and register an SSH key for the machine with GitHub. Re-running it on an existing clone is safe. `dotfiles install` and `update` refuse to run from any other checkout, so a development clone can't hijack the machine's symlinks.
 
 Or by hand:
 
@@ -88,7 +88,6 @@ Files tagged with a platform name are only used there:
 | `pacman/` | Arch package lists (official + AUR) and installer |
 | `system/` | Shell aliases, environment, PATH, and a cross-platform `pbcopy`/`pbpaste`/`open` |
 | `vim/` | Vim configuration |
-| `xcode/` | iOS Simulator alias (macOS only) |
 | `zoxide/` | Smarter `cd` with directory frecency |
 | `zsh/` | Zsh config, prompt, and plugin loading |
 
@@ -98,7 +97,7 @@ Files tagged with a platform name are only used there:
 
 ### Modern CLI Replacements
 
-Installed via Homebrew on macOS, pacman on Arch, and mise on Ubuntu:
+Installed via Homebrew on macOS and pacman on Arch. On Ubuntu, apt supplies jq, btop, tealdeer and mise itself; mise installs the rest at upstream versions:
 
 | Tool | Replaces | What it does |
 |------|----------|-------------|
@@ -134,7 +133,7 @@ When adding a tool, add it to all of them.
 
 ## Keeping Up to Date
 
-`dotfiles update` fast-forwards to `main`, re-runs all installers, and upgrades mise-managed tools. The launchd agent and systemd service pull *before* starting the script, so a broken `bin/dotfiles` on `main` can still be fixed by the next push. Offline, the update skips the network-only steps and re-applies the current checkout; one failing installer doesn't stop the others. Manual and scheduled runs can't overlap (a lock in `$TMPDIR`).
+`dotfiles update` fast-forwards to `main`, re-runs all installers, and upgrades mise-managed tools. On macOS `brew bundle` also upgrades every Homebrew formula to its latest version on each run; on Linux the package installers only add missing packages and leave upgrades to `pacman -Syu` / `apt upgrade`. The launchd agent and systemd service pull *before* starting the script, so a broken `bin/dotfiles` on `main` can still be fixed by the next push. Offline, the update skips the network-only steps and re-applies the current checkout; one failing installer doesn't stop the others. Manual and scheduled runs can't overlap (a lock in `$TMPDIR`).
 It runs every 2 hours from a launchd agent on macOS or a systemd user timer (`dotfiles-update.timer`) on Linux, both installed by the `autoupdate/` topic.
 On a headless Linux box the installer enables lingering so the timer runs without a login session.
 Logs: `~/Library/Logs/dotfiles-update.log` on macOS, `journalctl --user -u dotfiles-update` on Linux.

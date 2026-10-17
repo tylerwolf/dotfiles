@@ -10,7 +10,7 @@ A topic-based dotfiles repository for macOS and Linux (Arch/CachyOS and Debian/U
 
 Three layers, each with one job:
 
-- `script/bootstrap` — From nothing: install git (and Command Line Tools on macOS), clone to `~/.dotfiles`, run `dotfiles install`, offer `dotfiles ssh-key`. This is the one-liner in the README; re-runnable on an existing clone. Env: `DOTFILES_DIR`, `DOTFILES_REPO`, `DOTFILES_BRANCH`.
+- `script/bootstrap` — From nothing: install git (and Command Line Tools on macOS), clone to `~/.dotfiles`, run `dotfiles install`, offer `dotfiles ssh-key`. This is the one-liner in the README; re-runnable on an existing clone. Env: `DOTFILES_REPO`, `DOTFILES_BRANCH`. The clone is always `~/.dotfiles`; `dotfiles install`/`update` refuse to run from any other checkout.
 - `bin/dotfiles` — The user command (on `$PATH` via `$DOTFILES/bin`):
   - `dotfiles install` — Symlinks, dangling-link cleanup, package topics first, then all topic installers, then offer zsh as login shell. Idempotent.
   - `dotfiles update` — Fetch the https `updates` remote and fast-forward to `updates/main` (aborting any interrupted rebase/merge), `install`, `mise upgrade`; records `dotfiles.lastupdate` only on full success. Run by launchd / systemd, whose command lines pull *before* exec'ing the script so a broken script on main is self-healing. Sets `DOTFILES_OFFLINE=1` when the fetch fails so network-only installer steps (brew update, antidote pull) are skipped. A `mkdir` lock in `$TMPDIR` prevents overlapping runs.
@@ -55,7 +55,7 @@ The zsh loader (`zsh/zshrc.symlink`) auto-discovers files by naming convention a
 
 One list per package manager; keep them in sync (headers cross-reference each other):
 
-- `homebrew/Brewfile.darwin.symlink` — macOS
+- `homebrew/Brewfile.darwin.symlink` — macOS (`brew bundle` also upgrades installed formulae on every run; Linux installers only add missing packages)
 - `pacman/packages.txt` + `pacman/aur.txt` — Arch (AUR via `yay`, falling back to `paru`)
 - `apt/packages.txt` — Debian/Ubuntu base packages
 - `mise/cli-tools.debian.toml` — modern CLI tools on Debian/Ubuntu (apt ships them stale/missing), installed by mise under canonical binary names

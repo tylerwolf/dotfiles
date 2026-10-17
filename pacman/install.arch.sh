@@ -17,11 +17,11 @@ packages() {
 	sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$1" | tr '\n' ' '
 }
 
-# names from a list that are not installed
+# names from a list that are not installed (pacman -T honours `provides`, so a
+# package satisfied by another one, e.g. gvim for vim, is not reported missing)
 missing() {
-	for pkg in "$@"; do
-		pacman -Q "$pkg" >/dev/null 2>&1 || printf '%s ' "$pkg"
-	done
+	[ "$#" -gt 0 ] || return 0
+	pacman -T "$@" | tr '\n' ' ' || true
 }
 
 # shellcheck disable=SC2046
@@ -42,6 +42,8 @@ if ! sudo -n true 2>/dev/null && [ ! -t 0 ]; then
 fi
 
 if [ -n "$missing_pkgs" ]; then
+	# No -y: a partial upgrade is worse than a stale database. If this fails
+	# with 404s the machine needs a full `sudo pacman -Syu` first.
 	# shellcheck disable=SC2086
 	sudo pacman -S --needed --noconfirm $missing_pkgs
 fi

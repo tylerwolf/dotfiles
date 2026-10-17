@@ -48,6 +48,8 @@ fi
 if ! loginctl show-user "$USER" 2>/dev/null | grep -q '^Linger=yes'; then
 	if loginctl enable-linger "$USER" 2>/dev/null || sudo -n loginctl enable-linger "$USER" 2>/dev/null; then
 		echo "› lingering enabled for $USER"
+	elif [ -t 0 ] && sudo loginctl enable-linger "$USER"; then
+		echo "› lingering enabled for $USER"
 	else
 		echo "› note: run 'sudo loginctl enable-linger $USER' so the timer runs without a login session"
 	fi

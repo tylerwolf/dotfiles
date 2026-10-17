@@ -15,7 +15,6 @@ alias gap='git add --patch'
 alias gcm='git commit -m'
 alias gcam='git commit -a -m'
 alias gs='git status -sb'
-alias gpr='gp && git pr'
 alias glnext='git log --oneline $(git describe --tags --abbrev=0 @^)..@'
 alias gf='git fetch --all --prune'
 alias gm='git merge'
@@ -25,5 +24,5 @@ alias gstp='git stash pop'
 alias gstd='git stash drop'
 
 gi() {
-	curl -s "https://www.gitignore.io/api/$*"
+	curl -sL "https://www.gitignore.io/api/$*"
 }
