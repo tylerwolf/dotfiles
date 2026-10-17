@@ -66,7 +66,7 @@ GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty
 
 ### Auto-Update
 
-`autoupdate/` installs a launchd agent on macOS (`install.darwin.sh`) or a systemd user timer `dotfiles-update.timer` on Linux (`install.linux.sh`, with `loginctl enable-linger` for headless hosts). Both run `dotfiles update` every 2 hours. Package installers skip sudo-requiring steps when there is no tty.
+`autoupdate/` installs a launchd agent on macOS (`install.darwin.sh`) or a systemd user timer `dotfiles-update.timer` on Linux (`install.linux.sh`, with `loginctl enable-linger` for headless hosts). Both run `dotfiles update` every 2 hours. Package installers skip sudo-requiring steps when there is no tty. Interactive `install`/`update` runs touch `~/.cache/dotfiles/last-manual-update`; `autoupdate/reminder.zsh` prints a reminder in new shells when that stamp is older than `DOTFILES_UPDATE_REMINDER_DAYS` (default 14).
 
 ### Environment Variables
 

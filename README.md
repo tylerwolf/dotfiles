@@ -137,6 +137,8 @@ When adding a tool, add it to all of them.
 It runs every 2 hours from a launchd agent on macOS or a systemd user timer (`dotfiles-update.timer`) on Linux, both installed by the `autoupdate/` topic.
 On a headless Linux box the installer enables lingering so the timer runs without a login session.
 Logs: `~/Library/Logs/dotfiles-update.log` on macOS, `journalctl --user -u dotfiles-update` on Linux.
+
+Because the scheduled runs can't do everything (sudo on Linux), a new shell reminds you when it has been more than 14 days since you last ran `dotfiles install` or `dotfiles update` yourself. Set `DOTFILES_UPDATE_REMINDER_DAYS` in `~/.zshenv` to change the threshold (0 disables it).
 Package installs that need a sudo password are skipped when there is no terminal; run `dotfiles update` interactively to pick them up.
 
 ## Local Customization

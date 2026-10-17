@@ -21,6 +21,9 @@ DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
 GITHUB_REPO="tylerwolf/dotfiles"
 DEPLOY_DIR="$HOME/.dotfiles"
+# touched by successful *interactive* install/update runs; the shell reminds
+# you when it gets old (autoupdate/reminder.zsh)
+MANUAL_STAMP="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/last-manual-update"
 PACKAGE_TOPICS="homebrew pacman apt mise"
 PLATFORM_TAGS="darwin linux arch debian"
 
@@ -203,10 +206,17 @@ do_install() {
   return 1
 }
 
+record_manual_run() {
+  [ -t 0 ] || return 0
+  mkdir -p "$(dirname "$MANUAL_STAMP")"
+  date +%s >"$MANUAL_STAMP"
+}
+
 cmd_install() {
   require_deploy_dir
   acquire_lock
   do_install || exit 1
+  record_manual_run
 }
 
 # ─── update ───────────────────────────────────────────────────────────────────
@@ -257,6 +267,7 @@ cmd_update() {
 
   if [ "$failed" -eq 0 ]; then
     git config --global dotfiles.lastupdate "$(date +%Y%m%d%H%M)"
+    record_manual_run
   fi
   exit "$failed"
 }
@@ -322,6 +333,11 @@ verify_common() {
     info "last successful update: ${last:0:4}-${last:4:2}-${last:6:2} ${last:8:2}:${last:10:2}"
   else
     info "no successful 'dotfiles update' recorded yet"
+  fi
+  if [ -r "$MANUAL_STAMP" ]; then
+    info "last manual install/update: $(( ($(date +%s) - $(cat "$MANUAL_STAMP")) / 86400 )) day(s) ago"
+  else
+    info "no manual install/update recorded yet (the shell will remind you)"
   fi
 
   # The shell actually starts, and the history tools are wired up: atuin loaded
