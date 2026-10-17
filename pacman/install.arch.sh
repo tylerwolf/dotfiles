@@ -24,6 +24,27 @@ missing() {
 	pacman -T "$@" | tr '\n' ' ' || true
 }
 
+# Without a tty a sudo password prompt would hang (the systemd timer).
+can_sudo() {
+	sudo -n true 2>/dev/null || [ -t 0 ]
+}
+
+# Interactive runs (DOTFILES_UPGRADE set by `dotfiles`) do a full system
+# upgrade first; Arch's partial-upgrade rule means that's the only safe way to
+# refresh the package database. Scheduled runs never upgrade.
+if [ -n "${DOTFILES_UPGRADE:-}" ]; then
+	if can_sudo; then
+		echo "› full system upgrade (pacman -Syu)"
+		sudo pacman -Syu --noconfirm
+		if [ -n "$(packages "$dir/aur.txt")" ] && command -v yay >/dev/null 2>&1; then
+			yay -Sua --noconfirm
+		fi
+		echo "  note: if the kernel or graphics stack was upgraded, reboot when convenient"
+	else
+		echo "  upgrades requested but sudo needs a password and there is no terminal; skipping"
+	fi
+fi
+
 # shellcheck disable=SC2046
 missing_pkgs="$(missing $(packages "$dir/packages.txt"))"
 # shellcheck disable=SC2046
@@ -34,16 +55,16 @@ if [ -z "$missing_pkgs" ] && [ -z "$missing_aur" ]; then
 	exit 0
 fi
 
-# Under the systemd timer there is no tty, so a sudo password prompt would hang.
-if ! sudo -n true 2>/dev/null && [ ! -t 0 ]; then
+if ! can_sudo; then
 	echo "  packages to install:${missing_pkgs:+ $missing_pkgs}${missing_aur:+ $missing_aur}"
 	echo "  sudo needs a password and there is no terminal; run 'dotfiles update' interactively"
 	exit 0
 fi
 
 if [ -n "$missing_pkgs" ]; then
-	# No -y: a partial upgrade is worse than a stale database. If this fails
-	# with 404s the machine needs a full `sudo pacman -Syu` first.
+	# No -y on scheduled runs: a partial upgrade is worse than a stale database.
+	# If this fails with 404s, run 'dotfiles update' from a terminal (which does
+	# the full -Syu first).
 	# shellcheck disable=SC2086
 	sudo pacman -S --needed --noconfirm $missing_pkgs
 fi

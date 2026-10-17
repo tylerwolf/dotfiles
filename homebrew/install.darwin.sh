@@ -21,6 +21,15 @@ if [ -n "${DOTFILES_OFFLINE:-}" ]; then
 	exit 0
 fi
 
+# Upgrade installed formulae only when `dotfiles` says so (interactive runs);
+# otherwise just install what's missing.
+if [ -n "${DOTFILES_UPGRADE:-}" ]; then
+	echo "  installing missing packages and upgrading"
+else
+	echo "  installing missing packages only (no upgrades)"
+	export HOMEBREW_BUNDLE_NO_UPGRADE=1
+fi
+
 brew update
 brew bundle --global
 brew cleanup || true

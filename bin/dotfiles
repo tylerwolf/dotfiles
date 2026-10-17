@@ -206,6 +206,21 @@ do_install() {
   return 1
 }
 
+# Package upgrades (brew, pacman -Syu, apt upgrade, mise upgrade) happen only
+# on interactive runs, or when DOTFILES_UPGRADE=1 is set explicitly. The
+# scheduled run only installs what is missing, so nothing changes underneath
+# you; the shell reminder nudges you to run an interactive update.
+decide_upgrades() {
+  if [ -n "${DOTFILES_UPGRADE:-}" ]; then
+    info "upgrades: on (DOTFILES_UPGRADE set)"
+  elif [ -t 0 ]; then
+    export DOTFILES_UPGRADE=1
+    info "upgrades: on (interactive run)"
+  else
+    info "upgrades: off (scheduled run); run 'dotfiles update' from a terminal to upgrade packages"
+  fi
+}
+
 record_manual_run() {
   [ -t 0 ] || return 0
   mkdir -p "$(dirname "$MANUAL_STAMP")"
@@ -215,6 +230,7 @@ record_manual_run() {
 cmd_install() {
   require_deploy_dir
   acquire_lock
+  decide_upgrades
   do_install || exit 1
   record_manual_run
 }
@@ -256,11 +272,12 @@ cmd_update() {
   if [ "$offline" = true ]; then
     export DOTFILES_OFFLINE=1
   fi
+  decide_upgrades
 
   local failed=0
   do_install || failed=1
 
-  if command -v mise >/dev/null 2>&1 && [ "$offline" = false ]; then
+  if command -v mise >/dev/null 2>&1 && [ "$offline" = false ] && [ -n "${DOTFILES_UPGRADE:-}" ]; then
     echo "› mise upgrade"
     MISE_YES=1 mise upgrade || failed=1
   fi

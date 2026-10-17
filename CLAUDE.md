@@ -55,7 +55,7 @@ The zsh loader (`zsh/zshrc.symlink`) auto-discovers files by naming convention a
 
 One list per package manager; keep them in sync (headers cross-reference each other):
 
-- `homebrew/Brewfile.darwin.symlink` — macOS (`brew bundle` also upgrades installed formulae on every run; Linux installers only add missing packages)
+- `homebrew/Brewfile.darwin.symlink` — macOS
 - `pacman/packages.txt` + `pacman/aur.txt` — Arch (AUR via `yay`, falling back to `paru`)
 - `apt/packages.txt` — Debian/Ubuntu base packages
 - `mise/cli-tools.debian.toml` — modern CLI tools on Debian/Ubuntu (apt ships them stale/missing), installed by mise under canonical binary names
@@ -66,7 +66,7 @@ GUI apps: Ghostty is the terminal on macOS (`cask 'ghostty'`) and Arch (`ghostty
 
 ### Auto-Update
 
-`autoupdate/` installs a launchd agent on macOS (`install.darwin.sh`) or a systemd user timer `dotfiles-update.timer` on Linux (`install.linux.sh`, with `loginctl enable-linger` for headless hosts). Both run `dotfiles update` every 2 hours. Package installers skip sudo-requiring steps when there is no tty. Interactive `install`/`update` runs touch `~/.cache/dotfiles/last-manual-update`; `autoupdate/reminder.zsh` prints a reminder in new shells when that stamp is older than `DOTFILES_UPDATE_REMINDER_DAYS` (default 14).
+`autoupdate/` installs a launchd agent on macOS (`install.darwin.sh`) or a systemd user timer `dotfiles-update.timer` on Linux (`install.linux.sh`, with `loginctl enable-linger` for headless hosts). Both run `dotfiles update` every 2 hours. **Upgrades only happen on interactive runs**: `bin/dotfiles` exports `DOTFILES_UPGRADE=1` when stdin is a tty (or when already set), and the installers read it — brew bundle upgrades vs `HOMEBREW_BUNDLE_NO_UPGRADE=1`, `pacman -Syu` first vs install-missing only, `apt-get upgrade` vs install-missing only, and `mise upgrade` only with it. Package installers skip sudo-requiring steps when there is no tty. Interactive `install`/`update` runs touch `~/.cache/dotfiles/last-manual-update`; `autoupdate/reminder.zsh` prints a reminder in new shells when that stamp is older than `DOTFILES_UPDATE_REMINDER_DAYS` (default 14).
 
 ### Environment Variables
 

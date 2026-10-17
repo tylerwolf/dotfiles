@@ -88,6 +88,9 @@ jobs:
           git -C "$HOME/.dotfiles" remote add updates "$GITHUB_WORKSPACE"
           ./bin/dotfiles update
 
+      - name: dotfiles update with upgrades (interactive-run behaviour)
+        run: DOTFILES_UPGRADE=1 ./bin/dotfiles update
+
       - name: Start zsh
         run: zsh -ic 'echo "zsh started OK"'
 

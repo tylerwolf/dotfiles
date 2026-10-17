@@ -40,7 +40,7 @@ Everything after the clone is one command, on your `$PATH` once installed:
 | Command | What it does |
 |---------|-------------|
 | `dotfiles install` | Make this machine match the repo: symlink `*.symlink` files into `$HOME`, remove dangling links, install packages for your platform, run every topic `install.sh`, offer zsh as the login shell. Idempotent. |
-| `dotfiles update` | Fast-forward to `main`, then `install`, then upgrade mise-managed tools. This is what the auto-updater runs. |
+| `dotfiles update` | Fast-forward to `main`, then `install`; from a terminal it also upgrades packages and mise-managed tools. This is what the auto-updater runs (without upgrades). |
 | `dotfiles verify` | Check that everything is in place for this platform. |
 | `dotfiles defaults` | Apply macOS system/Finder/Dock preferences (`macos/set-defaults.sh`). |
 | `dotfiles ssh-key` | Create an ed25519 key for this machine if needed and register it with GitHub via `gh`. |
@@ -133,12 +133,12 @@ When adding a tool, add it to all of them.
 
 ## Keeping Up to Date
 
-`dotfiles update` fast-forwards to `main`, re-runs all installers, and upgrades mise-managed tools. On macOS `brew bundle` also upgrades every Homebrew formula to its latest version on each run; on Linux the package installers only add missing packages and leave upgrades to `pacman -Syu` / `apt upgrade`. The launchd agent and systemd service pull *before* starting the script, so a broken `bin/dotfiles` on `main` can still be fixed by the next push. Offline, the update skips the network-only steps and re-applies the current checkout; one failing installer doesn't stop the others. Manual and scheduled runs can't overlap (a lock in `$TMPDIR`).
+`dotfiles update` fast-forwards to `main`, re-runs all installers, and upgrades mise-managed tools. Package upgrades happen only when you run it yourself. An interactive `dotfiles update` upgrades everything: Homebrew formulae on macOS, a full `pacman -Syu` on Arch, `apt-get upgrade` on Ubuntu, and mise-managed tools everywhere. The scheduled run only installs what is missing, so nothing changes underneath you. `DOTFILES_UPGRADE=1 dotfiles update` forces the upgrade behaviour from a script. The launchd agent and systemd service pull *before* starting the script, so a broken `bin/dotfiles` on `main` can still be fixed by the next push. Offline, the update skips the network-only steps and re-applies the current checkout; one failing installer doesn't stop the others. Manual and scheduled runs can't overlap (a lock in `$TMPDIR`).
 It runs every 2 hours from a launchd agent on macOS or a systemd user timer (`dotfiles-update.timer`) on Linux, both installed by the `autoupdate/` topic.
 On a headless Linux box the installer enables lingering so the timer runs without a login session.
 Logs: `~/Library/Logs/dotfiles-update.log` on macOS, `journalctl --user -u dotfiles-update` on Linux.
 
-Because the scheduled runs can't do everything (sudo on Linux), a new shell reminds you when it has been more than 14 days since you last ran `dotfiles install` or `dotfiles update` yourself. Set `DOTFILES_UPDATE_REMINDER_DAYS` in `~/.zshenv` to change the threshold (0 disables it).
+Because the scheduled runs never upgrade packages (and can't use sudo on Linux), a new shell reminds you when it has been more than 14 days since you last ran `dotfiles install` or `dotfiles update` yourself. Set `DOTFILES_UPDATE_REMINDER_DAYS` in `~/.zshenv` to change the threshold (0 disables it).
 Package installs that need a sudo password are skipped when there is no terminal; run `dotfiles update` interactively to pick them up.
 
 ## Local Customization
